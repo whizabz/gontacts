@@ -40,3 +40,7 @@ Without a client ID the app still runs: "Use Sample Contacts" on the connect scr
 - Real app icon
 - Testing on the iPhone Duo simulator (no Duo runtime installed here); layouts use `NavigationSplitView`/`TabView` so they adapt, but fold-aware tweaks (`ReservedRegion`) are untested
 - Photos are display-only (no upload)
+
+## License
+
+MIT. See [LICENSE](LICENSE).
