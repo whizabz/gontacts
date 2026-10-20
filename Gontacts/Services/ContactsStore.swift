@@ -6,10 +6,23 @@ final class ContactsStore {
     enum Mode: String { case signedOut, demo, google }
 
     private(set) var mode: Mode
-    private(set) var contacts: [Contact] = []
+    /// Demo overlay: signed in to Google, but showing sample contacts instead. Google is neither read nor written.
+    private(set) var isDemoOverlay: Bool
     private(set) var isSyncing = false
     private(set) var lastSynced: Date?
     var errorMessage: String?
+
+    // What the UI shows. Rebuilt whenever the underlying data changes, so views never sort or scan per render.
+    private(set) var contacts: [Contact] = []
+    private(set) var sorted: [Contact] = []
+    private(set) var todayIDs: Set<String> = []
+    /// Bumps on every change; lets views cache derived data (like the events timeline).
+    private(set) var revision = 0
+
+    @ObservationIgnored private var liveContacts: [Contact] = []
+    @ObservationIgnored private var sampleContacts: [Contact] = []
+    @ObservationIgnored private var index: [String: Contact] = [:]
+    @ObservationIgnored private var searchKeys: [String: String] = [:]
 
     @ObservationIgnored private let auth: GoogleAuth
     @ObservationIgnored private let api: PeopleAPI
@@ -17,22 +30,45 @@ final class ContactsStore {
 
     var accountEmail: String? { mode == .google ? auth.email : nil }
     var isSignedIn: Bool { mode != .signedOut }
+    /// True when the contacts on screen are the sample ones.
+    var isShowingSample: Bool { mode == .demo || isDemoOverlay }
+    var canSync: Bool { mode == .google && !isDemoOverlay }
 
     init() {
         let auth = GoogleAuth()
         self.auth = auth
         api = PeopleAPI(auth: auth)
         let saved = Mode(rawValue: UserDefaults.standard.string(forKey: "store.mode") ?? "") ?? .signedOut
-        mode = (saved == .google && !auth.isSignedIn) ? .signedOut : saved
+        let resolved: Mode = (saved == .google && !auth.isSignedIn) ? .signedOut : saved
+        mode = resolved
+        isDemoOverlay = resolved == .google && UserDefaults.standard.bool(forKey: "store.demoOverlay")
         lastSynced = defaults.object(forKey: "store.lastSynced") as? Date
-        contacts = loadCache()
-        if mode == .demo && contacts.isEmpty { contacts = SampleData.contacts() }
+
+        if mode == .google { liveContacts = load(.google) }
+        if isShowingSample {
+            sampleContacts = load(.demo)
+            if sampleContacts.isEmpty { sampleContacts = SampleData.contacts() }
+        }
+        rebuild()
     }
 
-    func contact(id: String) -> Contact? { contacts.first { $0.id == id } }
+    func contact(id: String) -> Contact? { index[id] }
 
-    var sorted: [Contact] {
-        contacts.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+    /// Contacts matching `query` by name, company, email or phone digits.
+    func search(_ query: String) -> [Contact] {
+        let q = Self.fold(query)
+        guard !q.isEmpty else { return sorted }
+        let digits = query.filter(\.isNumber)
+        return sorted.filter { c in
+            guard let key = searchKeys[c.id] else { return false }
+            return key.contains(q) || (digits.count >= 3 && key.contains(digits))
+        }
+    }
+
+    /// Re-evaluates "who has an event today", e.g. after midnight.
+    func refreshToday() {
+        let t = Self.todayIDs(in: contacts)
+        if t != todayIDs { todayIDs = t }
     }
 
     // MARK: - Sign in / out
@@ -41,7 +77,11 @@ final class ContactsStore {
         do {
             try await auth.signIn()
             setMode(.google)
-            contacts = []
+            setOverlayFlag(false)
+            liveContacts = []
+            sampleContacts = []
+            try? FileManager.default.removeItem(at: cacheURL(for: .demo))
+            rebuild()
             await sync()
         } catch AuthError.cancelled {
         } catch {
@@ -51,29 +91,45 @@ final class ContactsStore {
 
     func useSampleContacts() {
         setMode(.demo)
-        contacts = SampleData.contacts()
+        setOverlayFlag(false)
+        sampleContacts = SampleData.contacts()
+        rebuild()
+        persist()
+    }
+
+    /// Switch between your real contacts and the sample ones, without signing out of Google.
+    func setDemoOverlay(_ on: Bool) {
+        guard mode == .google, on != isDemoOverlay else { return }
+        if on, sampleContacts.isEmpty { sampleContacts = load(.demo) }
+        if on, sampleContacts.isEmpty { sampleContacts = SampleData.contacts() }
+        setOverlayFlag(on)
+        rebuild()
         persist()
     }
 
     func signOut() {
         auth.signOut()
         setMode(.signedOut)
-        contacts = []
+        setOverlayFlag(false)
+        liveContacts = []
+        sampleContacts = []
         lastSynced = nil
         try? FileManager.default.removeItem(at: cacheURL(for: .google))
         try? FileManager.default.removeItem(at: cacheURL(for: .demo))
+        rebuild()
     }
 
     // MARK: - Sync
 
     func sync() async {
-        guard mode == .google, !isSyncing else { return }
+        guard canSync, !isSyncing else { return }
         isSyncing = true
         defer { isSyncing = false }
         do {
-            contacts = try await api.listContacts()
+            liveContacts = try await api.listContacts()
             lastSynced = .now
             defaults.set(lastSynced, forKey: "store.lastSynced")
+            rebuild()
             persist()
             errorMessage = nil
         } catch {
@@ -83,28 +139,74 @@ final class ContactsStore {
 
     // MARK: - Edit
 
-    /// Saves to Google (or locally in demo mode) and returns the saved contact.
+    /// Saves to Google (or locally when showing sample contacts) and returns the saved contact.
     @discardableResult
     func save(_ contact: Contact) async throws -> Contact {
         var contact = contact
         contact.events = contact.events.map { var e = $0; e.date.clamp(); return e }
         let saved: Contact
-        switch mode {
-        case .google:
-            saved = contact.isNew ? try await api.create(contact) : try await api.update(contact)
-        default:
+        if isShowingSample {
             if contact.isNew { contact.id = "people/local-\(UUID().uuidString)" }
             saved = contact
+            upsert(saved, into: &sampleContacts)
+        } else {
+            saved = contact.isNew ? try await api.create(contact) : try await api.update(contact)
+            upsert(saved, into: &liveContacts)
         }
-        if let i = contacts.firstIndex(where: { $0.id == contact.id }) { contacts[i] = saved } else { contacts.append(saved) }
+        rebuild()
         persist()
         return saved
     }
 
     func delete(_ contact: Contact) async throws {
-        if mode == .google, !contact.isNew { try await api.delete(contact) }
-        contacts.removeAll { $0.id == contact.id }
+        if isShowingSample {
+            sampleContacts.removeAll { $0.id == contact.id }
+        } else {
+            if !contact.isNew { try await api.delete(contact) }
+            liveContacts.removeAll { $0.id == contact.id }
+        }
+        rebuild()
         persist()
+    }
+
+    private func upsert(_ c: Contact, into list: inout [Contact]) {
+        if let i = list.firstIndex(where: { $0.id == c.id }) { list[i] = c } else { list.append(c) }
+    }
+
+    // MARK: - Derived data
+
+    private func rebuild() {
+        contacts = isShowingSample ? sampleContacts : liveContacts
+        sorted = contacts.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+        index = Dictionary(contacts.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        searchKeys = Dictionary(contacts.map { ($0.id, Self.searchKey(for: $0)) }, uniquingKeysWith: { a, _ in a })
+        todayIDs = Self.todayIDs(in: contacts)
+        revision += 1
+    }
+
+    private static func fold(_ s: String) -> String {
+        s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current).trimmingCharacters(in: .whitespaces)
+    }
+
+    private static func searchKey(for c: Contact) -> String {
+        let parts = [c.displayName, c.nickname, c.organization, c.jobTitle] + c.emails.map(\.value) + c.phones.map(\.value)
+        return fold(parts.joined(separator: " ")) + " " + c.phones.map { $0.value.filter(\.isNumber) }.joined(separator: " ")
+    }
+
+    private static func todayIDs(in contacts: [Contact], calendar: Calendar = .current) -> Set<String> {
+        let today = calendar.dateComponents([.year, .month, .day], from: .now)
+        guard let year = today.year, let month = today.month else { return [] }
+        let startOfToday = calendar.startOfDay(for: .now)
+        var ids = Set<String>()
+        for c in contacts {
+            for e in c.events where e.date.month == month {
+                if let d = e.date.date(inYear: year, calendar: calendar), calendar.isDate(d, inSameDayAs: startOfToday) {
+                    ids.insert(c.id)
+                    break
+                }
+            }
+        }
+        return ids
     }
 
     // MARK: - Persistence
@@ -114,19 +216,28 @@ final class ContactsStore {
         defaults.set(m.rawValue, forKey: "store.mode")
     }
 
+    private func setOverlayFlag(_ on: Bool) {
+        isDemoOverlay = on
+        defaults.set(on, forKey: "store.demoOverlay")
+    }
+
     private func cacheURL(for mode: Mode) -> URL {
         let dir = URL.applicationSupportDirectory
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appending(path: "contacts-\(mode.rawValue).json")
     }
 
-    private func loadCache() -> [Contact] {
-        guard mode != .signedOut, let data = try? Data(contentsOf: cacheURL(for: mode)) else { return [] }
+    private func load(_ mode: Mode) -> [Contact] {
+        guard let data = try? Data(contentsOf: cacheURL(for: mode)) else { return [] }
         return (try? JSONDecoder().decode([Contact].self, from: data)) ?? []
     }
 
     private func persist() {
-        guard mode != .signedOut, let data = try? JSONEncoder().encode(contacts) else { return }
-        try? data.write(to: cacheURL(for: mode), options: .atomic)
+        if mode == .google, let data = try? JSONEncoder().encode(liveContacts) {
+            try? data.write(to: cacheURL(for: .google), options: .atomic)
+        }
+        if isShowingSample, let data = try? JSONEncoder().encode(sampleContacts) {
+            try? data.write(to: cacheURL(for: .demo), options: .atomic)
+        }
     }
 }

@@ -28,6 +28,7 @@ struct ContactDetailView: View {
                 VStack(spacing: 6) {
                     AvatarView(contact: contact, size: 96)
                     Text(contact.displayName).font(.title.bold()).multilineTextAlignment(.center).padding(.top, 6)
+                    if !contact.nickname.isEmpty { Text("“\(contact.nickname)”").foregroundStyle(.secondary) }
                     if !contact.subtitle.isEmpty { Text(contact.subtitle).foregroundStyle(.secondary) }
                     if model.store.mode == .google {
                         Label("Synced with Google", systemImage: "checkmark").font(.caption)
@@ -66,6 +67,34 @@ struct ContactDetailView: View {
                     ForEach(contact.emails) { e in
                         LabeledContent(e.label) { Button(e.value) { mail(e.value) }.buttonStyle(.plain).foregroundStyle(.tint) }
                     }
+                }
+            }
+
+            if !contact.addresses.filter({ !$0.isEmpty }).isEmpty {
+                Section("Address") {
+                    ForEach(contact.addresses.filter { !$0.isEmpty }) { a in
+                        Button { openMap(a) } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(a.label).font(.footnote).foregroundStyle(.secondary)
+                                Text(a.formatted).foregroundStyle(.tint).multilineTextAlignment(.leading)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            if !contact.urls.isEmpty {
+                Section("Website") {
+                    ForEach(contact.urls) { u in
+                        LabeledContent(u.label) { Button(u.value) { openWebsite(u.value) }.buttonStyle(.plain).foregroundStyle(.tint) }
+                    }
+                }
+            }
+
+            if !contact.relations.isEmpty {
+                Section("Related people") {
+                    ForEach(contact.relations) { r in LabeledContent(r.label, value: r.value) }
                 }
             }
 
@@ -174,6 +203,17 @@ struct ContactDetailView: View {
     private func call(_ number: String) { if let url = URL(string: "tel:" + Self.digits(number)) { openURL(url) } }
     private func text(_ number: String) { if let url = URL(string: "sms:" + Self.digits(number)) { openURL(url) } }
     private func mail(_ address: String) { if let url = URL(string: "mailto:" + address) { openURL(url) } }
+
+    private func openMap(_ a: PostalAddress) {
+        let query = a.formatted.replacingOccurrences(of: "\n", with: ", ").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        if let url = URL(string: "http://maps.apple.com/?q=\(query)") { openURL(url) }
+    }
+
+    private func openWebsite(_ raw: String) {
+        let text = raw.trimmingCharacters(in: .whitespaces)
+        let withScheme = text.contains("://") ? text : "https://" + text
+        if let url = URL(string: withScheme) { openURL(url) }
+    }
 
     static func digits(_ s: String) -> String { s.filter { $0.isNumber || $0 == "+" } }
 }

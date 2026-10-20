@@ -2,15 +2,24 @@ import SwiftUI
 
 struct EventsView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var selection: String?
-    @State private var offsetY: CGFloat = 0
-    @State private var anchorOffsetY: CGFloat?
+    @State private var sections: [EventSection] = []
+    /// Where the list is relative to "today". Only changes when it crosses a threshold, so scrolling doesn't re-render.
+    @State private var relation: ScrollRelation = .atAnchor
+    @State private var scrollTracker = ScrollTracker()
 
-    /// Leaves room for the navigation bar so the target section header isn't hidden under it.
+    enum ScrollRelation { case atAnchor, above, below }
+
+    /// Plain reference so tracking the live offset never invalidates the view.
+    final class ScrollTracker {
+        var offsetY: CGFloat = 0
+        var anchorOffsetY: CGFloat?
+    }
+
     private static let anchorPoint = UnitPoint(x: 0.5, y: 0.02)
+    private static let awayThreshold: CGFloat = 350
 
-    private var sections: [EventSection] {
+    private func buildSections() -> [EventSection] {
         let today = Calendar.current.startOfDay(for: .now)
         let start = Calendar.current.date(byAdding: .month, value: -12, to: today)!
         let end = Calendar.current.date(byAdding: .month, value: 12, to: today)!
@@ -19,7 +28,6 @@ struct EventsView: View {
     }
 
     var body: some View {
-        let sections = sections
         let anchor = EventTimeline.anchorID(in: sections)
 
         NavigationSplitView {
@@ -40,31 +48,35 @@ struct EventsView: View {
                         }
                     }
                 }
-                .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, new in offsetY = new }
-                .overlay(alignment: .bottomTrailing) {
-                    if showTodayButton, let anchor {
+                .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollTracker.offsetY = y }
+                .onScrollGeometryChange(for: ScrollRelation.self) { geo in
+                    guard let a = scrollTracker.anchorOffsetY else { return .atAnchor }
+                    let d = geo.contentOffset.y - a
+                    return d < -Self.awayThreshold ? .above : d > Self.awayThreshold ? .below : .atAnchor
+                } action: { _, new in relation = new }
+                .overlay(alignment: .bottom) {
+                    if relation != .atAnchor, let anchor {
                         Button {
                             withAnimation(.smooth) { proxy.scrollTo(anchor, anchor: Self.anchorPoint) }
                         } label: {
-                            Label("Today", systemImage: pointsDown ? "arrow.down" : "arrow.up").font(.headline)
+                            Label("Today", systemImage: relation == .above ? "arrow.down" : "arrow.up")
+                                .font(.subheadline.weight(.semibold))
                         }
                         .buttonStyle(.glass)
-                        .controlSize(.large)
-                        .padding(.horizontal, 16)
-                        // The floating tab bar sits over content on iPhone, so lift the button above it.
-                        .padding(.bottom, sizeClass == .compact ? 88 : 16)
+                        .controlSize(.small)
+                        .padding(.bottom, 12)
                         .transition(.scale.combined(with: .opacity))
                     }
                 }
-                .animation(.smooth, value: showTodayButton)
+                .animation(.smooth, value: relation)
                 .task(id: anchor) {
                     guard let anchor else { return }
-                    anchorOffsetY = nil
+                    scrollTracker.anchorOffsetY = nil
                     try? await Task.sleep(for: .milliseconds(50))
                     proxy.scrollTo(anchor, anchor: Self.anchorPoint)
                     // Remember where "today" landed so we can tell when the user has scrolled away from it.
                     try? await Task.sleep(for: .milliseconds(700))
-                    anchorOffsetY = offsetY
+                    scrollTracker.anchorOffsetY = scrollTracker.offsetY
                 }
             }
             .navigationTitle("Events")
@@ -83,17 +95,7 @@ struct EventsView: View {
                 }
             }
         }
-    }
-
-    /// Shown once the list has been scrolled well away from where it opened.
-    private var showTodayButton: Bool {
-        guard let anchorOffsetY else { return false }
-        return abs(offsetY - anchorOffsetY) > 350
-    }
-
-    private var pointsDown: Bool {
-        guard let anchorOffsetY else { return true }
-        return offsetY < anchorOffsetY
+        .onChange(of: model.store.revision, initial: true) { _, _ in sections = buildSections() }
     }
 }
 

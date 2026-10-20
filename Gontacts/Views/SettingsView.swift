@@ -43,17 +43,7 @@ struct SettingsView: View {
                     NavigationLink("Why This App Exists") { WhyThisAppExistsView() }
                 }
 
-                Section("Account") {
-                    LabeledContent("Account", value: model.store.accountEmail ?? "Sample contacts")
-                    if model.store.mode == .google {
-                        LabeledContent("Synced") {
-                            if let last = model.store.lastSynced { Text(last, style: .relative) } else { Text("Never") }
-                        }
-                        Button("Sync Now") { Task { await model.store.sync() } }
-                            .disabled(model.store.isSyncing)
-                    }
-                    Button("Sign Out", role: .destructive) { confirmSignOut = true }
-                }
+                accountSection
             }
             .navigationTitle("Settings")
             .confirmationDialog("Sign out of Gontacts?", isPresented: $confirmSignOut, titleVisibility: .visible) {
@@ -78,6 +68,55 @@ struct SettingsView: View {
             if await ReminderScheduler.authorizationStatus() == .notDetermined { await ReminderScheduler.requestAuthorization() }
             authStatus = await ReminderScheduler.authorizationStatus()
             model.rescheduleReminders()
+        }
+    }
+}
+
+extension SettingsView {
+    @ViewBuilder
+    fileprivate var accountSection: some View {
+        if model.store.mode == .demo {
+            Section {
+                LabeledContent("Contacts", value: "Sample contacts")
+                Button("Sign in with Google") { Task { await model.store.signInWithGoogle() } }
+            } header: {
+                Text("Account")
+            } footer: {
+                Text("You're exploring with sample contacts. Sign in to see and edit your own Google Contacts.")
+            }
+        } else {
+            Section {
+                LabeledContent("Account", value: model.store.accountEmail ?? "Google")
+                if model.store.canSync {
+                    LabeledContent("Last synced") {
+                        if model.store.isSyncing {
+                            Text("Syncing…")
+                        } else if let last = model.store.lastSynced {
+                            TimelineView(.periodic(from: .now, by: 30)) { _ in
+                                Text(last.formatted(.relative(presentation: .named)))
+                            }
+                        } else {
+                            Text("Never")
+                        }
+                    }
+                    Button("Sync Now") { Task { await model.store.sync() } }
+                        .disabled(model.store.isSyncing)
+                }
+                Toggle("Demo Mode", isOn: Binding(
+                    get: { model.store.isDemoOverlay },
+                    set: { on in
+                        model.store.setDemoOverlay(on)
+                        model.rescheduleReminders()
+                    }
+                ))
+                Button("Sign Out", role: .destructive) { confirmSignOut = true }
+            } header: {
+                Text("Account")
+            } footer: {
+                Text(model.store.isDemoOverlay
+                     ? "Showing sample contacts and events. Your Google contacts aren't touched, synced or used for reminders until you turn this off."
+                     : "Last synced is when Gontacts last downloaded your contacts from Google. Pull down on Contacts to sync again. Demo Mode shows sample contacts so you can show off the app.")
+            }
         }
     }
 }

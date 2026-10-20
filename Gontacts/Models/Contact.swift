@@ -26,6 +26,27 @@ struct LabeledValue: Hashable, Codable, Identifiable, Sendable {
     var value: String
 }
 
+struct PostalAddress: Hashable, Codable, Identifiable, Sendable {
+    var id = UUID()
+    var label: String = "home"
+    var street = ""
+    var city = ""
+    var region = ""
+    var postalCode = ""
+    var country = ""
+    /// Sub-fields we don't edit but must send back so an update doesn't erase them.
+    var extendedAddress = ""
+    var poBox = ""
+
+    var isEmpty: Bool { [street, city, region, postalCode, country, extendedAddress, poBox].allSatisfy { $0.isEmpty } }
+
+    /// Multi-line text for display.
+    var formatted: String {
+        let cityLine = [city, region, postalCode].filter { !$0.isEmpty }.joined(separator: " ")
+        return [poBox, street, extendedAddress, cityLine, country].filter { !$0.isEmpty }.joined(separator: "\n")
+    }
+}
+
 struct ContactEvent: Hashable, Codable, Identifiable, Sendable {
     var id = UUID()
     var kind: EventKind
@@ -43,15 +64,55 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
     /// People API resource name, e.g. "people/c123". New, unsaved contacts use "new-<uuid>".
     var id: String
     var etag: String?
+
+    var namePrefix = ""
     var givenName = ""
+    var middleName = ""
     var familyName = ""
+    var nameSuffix = ""
+    var nickname = ""
     var organization = ""
     var jobTitle = ""
+
     var phones: [LabeledValue] = []
     var emails: [LabeledValue] = []
+    var addresses: [PostalAddress] = []
+    var urls: [LabeledValue] = []
+    /// Related people: `label` is the relationship ("spouse", "friend"), `value` the person's name.
+    var relations: [LabeledValue] = []
     var events: [ContactEvent] = []
     var notes = ""
     var photoURL: URL?
+
+    // Fields added later; decode leniently so older cached data still loads.
+    init(id: String) { self.id = id }
+
+    enum CodingKeys: String, CodingKey {
+        case id, etag, namePrefix, givenName, middleName, familyName, nameSuffix, nickname, organization, jobTitle
+        case phones, emails, addresses, urls, relations, events, notes, photoURL
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        etag = try c.decodeIfPresent(String.self, forKey: .etag)
+        namePrefix = try c.decodeIfPresent(String.self, forKey: .namePrefix) ?? ""
+        givenName = try c.decodeIfPresent(String.self, forKey: .givenName) ?? ""
+        middleName = try c.decodeIfPresent(String.self, forKey: .middleName) ?? ""
+        familyName = try c.decodeIfPresent(String.self, forKey: .familyName) ?? ""
+        nameSuffix = try c.decodeIfPresent(String.self, forKey: .nameSuffix) ?? ""
+        nickname = try c.decodeIfPresent(String.self, forKey: .nickname) ?? ""
+        organization = try c.decodeIfPresent(String.self, forKey: .organization) ?? ""
+        jobTitle = try c.decodeIfPresent(String.self, forKey: .jobTitle) ?? ""
+        phones = try c.decodeIfPresent([LabeledValue].self, forKey: .phones) ?? []
+        emails = try c.decodeIfPresent([LabeledValue].self, forKey: .emails) ?? []
+        addresses = try c.decodeIfPresent([PostalAddress].self, forKey: .addresses) ?? []
+        urls = try c.decodeIfPresent([LabeledValue].self, forKey: .urls) ?? []
+        relations = try c.decodeIfPresent([LabeledValue].self, forKey: .relations) ?? []
+        events = try c.decodeIfPresent([ContactEvent].self, forKey: .events) ?? []
+        notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        photoURL = try c.decodeIfPresent(URL.self, forKey: .photoURL)
+    }
 
     static func blank() -> Contact { Contact(id: "new-\(UUID().uuidString)") }
     var isNew: Bool { id.hasPrefix("new-") }
@@ -59,6 +120,7 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
     var displayName: String {
         let name = [givenName, familyName].filter { !$0.isEmpty }.joined(separator: " ")
         if !name.isEmpty { return name }
+        if !nickname.isEmpty { return nickname }
         if !organization.isEmpty { return organization }
         return emails.first?.value ?? phones.first?.value ?? "No Name"
     }
@@ -75,7 +137,7 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
 
     /// Letter used for the A–Z list; "#" for anything non-alphabetic.
     var sectionLetter: String {
-        let key = (familyName.isEmpty ? givenName : familyName).isEmpty ? displayName : (givenName.isEmpty ? familyName : givenName)
+        let key = displayName
         guard let c = key.folding(options: .diacriticInsensitive, locale: .current).first?.uppercased(),
               c.unicodeScalars.first.map(CharacterSet.letters.contains) == true else { return "#" }
         return c
@@ -83,7 +145,8 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
 
     /// Whether anything worth saving is filled in.
     var isEmpty: Bool {
-        givenName.isEmpty && familyName.isEmpty && organization.isEmpty
+        givenName.isEmpty && familyName.isEmpty && middleName.isEmpty && nickname.isEmpty && organization.isEmpty
             && phones.allSatisfy { $0.value.isEmpty } && emails.allSatisfy { $0.value.isEmpty }
+            && addresses.allSatisfy(\.isEmpty) && urls.allSatisfy { $0.value.isEmpty } && relations.allSatisfy { $0.value.isEmpty }
     }
 }

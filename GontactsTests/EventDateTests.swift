@@ -70,4 +70,29 @@ final class EventDateTests: XCTestCase {
         XCTAssertEqual(EventTimeline.anchorID(in: sections), "today")
         XCTAssertEqual(sections.first { $0.id == "today" }?.occurrences.first?.years, 34)
     }
+
+    func testExtraGoogleFieldsRoundTripWithoutLoss() throws {
+        let json = #"{"resourceName":"people/c9","etag":"e","names":[{"honorificPrefix":"Dr","givenName":"Ada","middleName":"Byron","familyName":"King","honorificSuffix":"PhD"}],"nicknames":[{"value":"Countess"}],"addresses":[{"type":"home","streetAddress":"1 Main St","extendedAddress":"Apt 2","poBox":"PO 7","city":"London","region":"LDN","postalCode":"N1","country":"UK"}],"urls":[{"value":"https://example.com","type":"blog"}],"relations":[{"person":"Charles","type":"friend"}]}"#
+        let contact = try XCTUnwrap(JSONDecoder().decode(PersonDTO.self, from: Data(json.utf8)).toContact())
+        XCTAssertEqual(contact.middleName, "Byron")
+        XCTAssertEqual(contact.namePrefix, "Dr")
+        XCTAssertEqual(contact.nickname, "Countess")
+        XCTAssertEqual(contact.addresses.first?.poBox, "PO 7")
+        XCTAssertEqual(contact.relations.first?.value, "Charles")
+
+        let back = PersonDTO(contact: contact)
+        XCTAssertEqual(back.names?.first?.middleName, "Byron")
+        XCTAssertEqual(back.names?.first?.honorificSuffix, "PhD")
+        XCTAssertEqual(back.addresses?.first?.extendedAddress, "Apt 2")
+        XCTAssertEqual(back.addresses?.first?.poBox, "PO 7")
+        XCTAssertEqual(back.urls?.first?.type, "blog")
+        XCTAssertEqual(back.relations?.first?.person, "Charles")
+    }
+
+    func testOlderCachedContactsStillDecode() throws {
+        let old = #"{"id":"people/c1","givenName":"Old","familyName":"Cache","phones":[],"emails":[],"events":[],"notes":""}"#
+        let c = try JSONDecoder().decode(Contact.self, from: Data(old.utf8))
+        XCTAssertEqual(c.givenName, "Old")
+        XCTAssertTrue(c.addresses.isEmpty)
+    }
 }

@@ -2,7 +2,7 @@ import Observation
 import SwiftUI
 import UserNotifications
 
-enum AppTab: Hashable { case contacts, events, settings, search }
+enum AppTab: Hashable { case contacts, events, settings }
 
 @MainActor @Observable
 final class AppModel {
@@ -33,7 +33,8 @@ final class AppModel {
     }
 
     func rescheduleReminders() {
-        let contacts = store.contacts
+        // Sample contacts are for show only: never schedule reminders for them (and clear any real ones while demoing).
+        let contacts = store.isShowingSample ? [] : store.contacts
         Task { await ReminderScheduler.reschedule(contacts: contacts, settings: settings) }
     }
 }

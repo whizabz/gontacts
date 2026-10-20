@@ -7,6 +7,7 @@ struct EditContactView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var draft: Contact
+    @State private var shown: Set<NameField>
     @State private var expandedEvent: UUID?
     @State private var confirmDiscard = false
     @State private var saving = false
@@ -16,7 +17,16 @@ struct EditContactView: View {
         original = contact
         self.onSaved = onSaved
         _draft = State(initialValue: contact)
+        var initial = Set<NameField>()
+        if !contact.namePrefix.isEmpty { initial.insert(.prefix) }
+        if !contact.middleName.isEmpty { initial.insert(.middleName) }
+        if !contact.nameSuffix.isEmpty { initial.insert(.suffix) }
+        if !contact.nickname.isEmpty { initial.insert(.nickname) }
+        _shown = State(initialValue: initial)
     }
+
+    /// Optional name fields, revealed from the "Add Field" menu (or when the contact already has a value).
+    enum NameField: Hashable { case prefix, middleName, suffix, nickname }
 
     private var hasChanges: Bool { draft != original }
 
@@ -24,14 +34,31 @@ struct EditContactView: View {
         NavigationStack {
             Form {
                 Section {
+                    if shown.contains(.prefix) { TextField("Name prefix", text: $draft.namePrefix) }
                     TextField("First name", text: $draft.givenName).textContentType(.givenName)
+                    if shown.contains(.middleName) { TextField("Middle name", text: $draft.middleName) }
                     TextField("Last name", text: $draft.familyName).textContentType(.familyName)
+                    if shown.contains(.suffix) { TextField("Name suffix", text: $draft.nameSuffix) }
+                    if shown.contains(.nickname) { TextField("Nickname", text: $draft.nickname) }
                     TextField("Company", text: $draft.organization)
                     TextField("Job title", text: $draft.jobTitle)
                 }
 
                 valueSection("Phone", values: $draft.phones, labels: ["mobile", "home", "work", "other"], keyboard: .phonePad)
                 valueSection("Email", values: $draft.emails, labels: ["home", "work", "other"], keyboard: .emailAddress)
+
+                if !draft.addresses.isEmpty {
+                    Section("Address") {
+                        ForEach($draft.addresses) { $address in AddressEditor(address: $address) }
+                            .onDelete { draft.addresses.remove(atOffsets: $0) }
+                    }
+                }
+                if !draft.urls.isEmpty {
+                    valueSection("Website", values: $draft.urls, labels: ["homepage", "blog", "work", "profile", "other"], keyboard: .URL)
+                }
+                if !draft.relations.isEmpty {
+                    valueSection("Related person", values: $draft.relations, labels: ["spouse", "partner", "child", "parent", "sibling", "friend", "manager", "assistant", "other"], keyboard: .default, capitalize: true)
+                }
 
                 Section("Dates") {
                     ForEach($draft.events) { $event in
@@ -52,6 +79,21 @@ struct EditContactView: View {
 
                 Section("Notes") {
                     TextField("Notes", text: $draft.notes, axis: .vertical).lineLimit(3...8)
+                }
+
+                Section {
+                    Menu {
+                        if !shown.contains(.prefix) { Button("Name prefix") { withAnimation { _ = shown.insert(.prefix) } } }
+                        if !shown.contains(.middleName) { Button("Middle name") { withAnimation { _ = shown.insert(.middleName) } } }
+                        if !shown.contains(.suffix) { Button("Name suffix") { withAnimation { _ = shown.insert(.suffix) } } }
+                        if !shown.contains(.nickname) { Button("Nickname") { withAnimation { _ = shown.insert(.nickname) } } }
+                        Divider()
+                        Button("Address", systemImage: "mappin.and.ellipse") { withAnimation { draft.addresses.append(PostalAddress()) } }
+                        Button("Website", systemImage: "link") { withAnimation { draft.urls.append(LabeledValue(label: "homepage", value: "")) } }
+                        Button("Related person", systemImage: "person.2") { withAnimation { draft.relations.append(LabeledValue(label: "friend", value: "")) } }
+                    } label: {
+                        Label("Add Field", systemImage: "plus.circle.fill")
+                    }
                 }
             }
             .navigationTitle(original.isNew ? "New Contact" : "Edit Contact")
@@ -98,7 +140,7 @@ struct EditContactView: View {
         }
     }
 
-    private func valueSection(_ title: String, values: Binding<[LabeledValue]>, labels: [String], keyboard: UIKeyboardType) -> some View {
+    private func valueSection(_ title: String, values: Binding<[LabeledValue]>, labels: [String], keyboard: UIKeyboardType, capitalize: Bool = false) -> some View {
         Section {
             ForEach(values) { $item in
                 HStack {
@@ -107,9 +149,9 @@ struct EditContactView: View {
                             ForEach(labels, id: \.self) { Text($0.capitalized).tag($0) }
                         }
                     } label: {
-                        Text(item.label.capitalized).frame(width: 74, alignment: .leading)
+                        Text(item.label.capitalized).frame(width: 84, alignment: .leading)
                     }
-                    TextField(title, text: $item.value).keyboardType(keyboard).textInputAutocapitalization(.never)
+                    TextField(title, text: $item.value).keyboardType(keyboard).textInputAutocapitalization(capitalize ? .words : .never)
                 }
             }
             .onDelete { values.wrappedValue.remove(atOffsets: $0) }
@@ -186,5 +228,29 @@ struct DateWheels: View {
         }
         .labelsHidden()
         .frame(height: 130)
+    }
+}
+
+struct AddressEditor: View {
+    @Binding var address: PostalAddress
+    private static let labels = ["home", "work", "other"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Menu {
+                Picker("Label", selection: $address.label) {
+                    ForEach(Self.labels, id: \.self) { Text($0.capitalized).tag($0) }
+                }
+            } label: {
+                Text(address.label.capitalized)
+            }
+            TextField("Street", text: $address.street).textContentType(.streetAddressLine1)
+            TextField("City", text: $address.city).textContentType(.addressCity)
+            HStack {
+                TextField("State / region", text: $address.region).textContentType(.addressState)
+                TextField("Postal code", text: $address.postalCode).textContentType(.postalCode)
+            }
+            TextField("Country", text: $address.country).textContentType(.countryName)
+        }
     }
 }

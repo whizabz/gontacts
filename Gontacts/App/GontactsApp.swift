@@ -12,12 +12,13 @@ struct GontactsApp: App {
                 .environment(model)
                 .onChange(of: scenePhase) { _, phase in
                     guard phase == .active, model.hasOnboarded else { return }
+                    model.store.refreshToday()
                     Task {
                         await model.store.sync()
                         model.rescheduleReminders()
                     }
                 }
-                .onChange(of: model.store.contacts) { _, _ in
+                .onChange(of: model.store.revision) { _, _ in
                     if model.hasOnboarded { model.rescheduleReminders() }
                 }
                 .alert("Something went wrong", isPresented: Binding(get: { model.store.errorMessage != nil }, set: { if !$0 { model.store.errorMessage = nil } })) {
@@ -50,7 +51,6 @@ struct MainTabs: View {
             Tab("Contacts", systemImage: "person.2", value: AppTab.contacts) { ContactsView() }
             Tab("Events", systemImage: "calendar", value: AppTab.events) { EventsView() }
             Tab("Settings", systemImage: "slider.horizontal.3", value: AppTab.settings) { SettingsView() }
-            Tab(value: AppTab.search, role: .search) { SearchView() }
         }
     }
 }
