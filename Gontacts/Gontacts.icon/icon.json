@@ -67,7 +67,7 @@
     {
       "layers" : [
         {
-          "glass" : false,
+          "glass" : true,
           "image-name-specializations" : [
             {
               "value" : "2-paper.svg"
@@ -77,7 +77,14 @@
               "value" : "2-paper-dark.svg"
             }
           ],
-          "name" : "Cover"
+          "name" : "Cover",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -11,
+              0
+            ]
+          }
         },
         {
           "glass" : false,
