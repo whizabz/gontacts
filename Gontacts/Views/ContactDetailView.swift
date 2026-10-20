@@ -30,7 +30,7 @@ struct ContactDetailView: View {
                     Text(contact.displayName).font(.title.bold()).multilineTextAlignment(.center).padding(.top, 6)
                     if !contact.nickname.isEmpty { Text("“\(contact.nickname)”").foregroundStyle(.secondary) }
                     if !contact.subtitle.isEmpty { Text(contact.subtitle).foregroundStyle(.secondary) }
-                    if model.store.mode == .google {
+                    if model.store.canSync {
                         Label("Synced with Google", systemImage: "checkmark").font(.caption)
                             .foregroundStyle(.green).padding(.top, 2)
                     }

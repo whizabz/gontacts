@@ -7,6 +7,7 @@ struct EventsView: View {
     /// Where the list is relative to "today". Only changes when it crosses a threshold, so scrolling doesn't re-render.
     @State private var relation: ScrollRelation = .atAnchor
     @State private var scrollTracker = ScrollTracker()
+    @State private var scrollHandle = ScrollViewHandle.Box()
 
     enum ScrollRelation { case atAnchor, above, below }
 
@@ -18,6 +19,14 @@ struct EventsView: View {
 
     private static let anchorPoint = UnitPoint(x: 0.5, y: 0.02)
     private static let awayThreshold: CGFloat = 350
+
+    private func jumpToToday(_ anchor: String, _ proxy: ScrollViewProxy) {
+        // scrollTo is ignored while the list is still decelerating, so stop the fling first.
+        scrollHandle.stopMomentum()
+        DispatchQueue.main.async {
+            withAnimation(.smooth) { proxy.scrollTo(anchor, anchor: Self.anchorPoint) }
+        }
+    }
 
     private func buildSections() -> [EventSection] {
         let today = Calendar.current.startOfDay(for: .now)
@@ -48,6 +57,7 @@ struct EventsView: View {
                         }
                     }
                 }
+                .background(ScrollViewHandle(box: scrollHandle))
                 .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollTracker.offsetY = y }
                 .onScrollGeometryChange(for: ScrollRelation.self) { geo in
                     guard let a = scrollTracker.anchorOffsetY else { return .atAnchor }
@@ -56,15 +66,18 @@ struct EventsView: View {
                 } action: { _, new in relation = new }
                 .overlay(alignment: .bottom) {
                     if relation != .atAnchor, let anchor {
-                        Button {
-                            withAnimation(.smooth) { proxy.scrollTo(anchor, anchor: Self.anchorPoint) }
-                        } label: {
-                            Label("Today", systemImage: relation == .above ? "arrow.down" : "arrow.up")
-                                .font(.subheadline.weight(.semibold))
-                        }
-                        .buttonStyle(.glass)
-                        .controlSize(.small)
-                        .padding(.bottom, 12)
+                        // Fires on touch-down rather than on a completed tap: a touch during a fling is otherwise
+                        // spent on stopping the scroll, which made the button feel dead until the list settled.
+                        Label("Today", systemImage: relation == .above ? "arrow.down" : "arrow.up")
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .glassEffect(.regular.interactive(), in: .capsule)
+                            .contentShape(.capsule)
+                            .onLongPressGesture(minimumDuration: 0, maximumDistance: 40) { jumpToToday(anchor, proxy) }
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction { jumpToToday(anchor, proxy) }
+                            .padding(.bottom, 12)
                         .transition(.scale.combined(with: .opacity))
                     }
                 }
