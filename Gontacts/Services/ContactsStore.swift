@@ -121,19 +121,25 @@ final class ContactsStore {
 
     // MARK: - Sync
 
-    func sync() async {
+    /// Automatic syncs (on launch / foreground) fail silently, retrying once, since the network is often
+    /// still waking up; the cached contacts stay on screen. Syncs the user asks for report errors.
+    func sync(userInitiated: Bool = true) async {
         guard canSync, !isSyncing else { return }
         isSyncing = true
         defer { isSyncing = false }
-        do {
-            liveContacts = try await api.listContacts()
-            lastSynced = .now
-            defaults.set(lastSynced, forKey: "store.lastSynced")
-            rebuild()
-            persist()
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
+        for attempt in 0..<(userInitiated ? 1 : 2) {
+            do {
+                liveContacts = try await api.listContacts()
+                lastSynced = .now
+                defaults.set(lastSynced, forKey: "store.lastSynced")
+                rebuild()
+                persist()
+                errorMessage = nil
+                return
+            } catch {
+                if userInitiated { errorMessage = error.localizedDescription; return }
+                if attempt == 0 { try? await Task.sleep(for: .seconds(4)) }
+            }
         }
     }
 

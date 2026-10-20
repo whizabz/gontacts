@@ -64,6 +64,7 @@ final class PeopleAPI {
         comps.queryItems = query.isEmpty ? nil : query
         var request = URLRequest(url: comps.url!)
         request.httpMethod = method
+        request.timeoutInterval = 20
         request.setValue("Bearer \(try await auth.validAccessToken())", forHTTPHeaderField: "Authorization")
         if let body {
             request.httpBody = try JSONEncoder().encode(body)

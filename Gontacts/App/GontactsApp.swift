@@ -14,7 +14,7 @@ struct GontactsApp: App {
                     guard phase == .active, model.hasOnboarded else { return }
                     model.store.refreshToday()
                     Task {
-                        await model.store.sync()
+                        await model.store.sync(userInitiated: false)
                         model.rescheduleReminders()
                     }
                 }
