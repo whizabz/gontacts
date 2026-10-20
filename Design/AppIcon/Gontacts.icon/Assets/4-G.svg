@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- A geometric G: open ring plus a crossbar. One colour, so the glass effect does the work -->
+  <defs><clipPath id="outer"><circle cx="464" cy="512" r="209"/></clipPath></defs>
+  <g fill="none" stroke="#FFFFFF" stroke-width="78">
+    <path d="M 594.2 402.7 A 170 170 0 1 0 634 512"/>
+    <path d="M 464 512 H 700" clip-path="url(#outer)"/>
+  </g>
+</svg>

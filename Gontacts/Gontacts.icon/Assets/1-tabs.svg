@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Three index tabs, flush against each other and the icon edges like the Contacts icon -->
+  <rect x="860" y="0"       width="164" height="342" fill="#F2548D"/>
+  <rect x="860" y="341.33"  width="164" height="342" fill="#FFB020"/>
+  <rect x="860" y="682.67"  width="164" height="341.33" fill="#1FB5A8"/>
+</svg>
