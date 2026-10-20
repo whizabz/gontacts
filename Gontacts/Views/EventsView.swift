@@ -24,7 +24,7 @@ struct EventsView: View {
         // scrollTo is ignored while the list is still decelerating, so stop the fling first.
         scrollHandle.stopMomentum()
         DispatchQueue.main.async {
-            withAnimation(.smooth) { proxy.scrollTo(anchor, anchor: Self.anchorPoint) }
+            withAnimation(.bouncy(duration: 0.75, extraBounce: 0.25)) { proxy.scrollTo(anchor, anchor: Self.anchorPoint) }
         }
     }
 
@@ -45,7 +45,8 @@ struct EventsView: View {
                     ForEach(sections) { section in
                         Section {
                             ForEach(section.occurrences) { o in
-                                NavigationLink(value: o.contactID) { EventRow(occurrence: o) }
+                                NavigationLink(value: o.contactID) { EventRow(occurrence: o, isToday: section.role == .today) }
+                                    .listRowBackground(section.role == .today ? Color.accentColor.opacity(0.14) : nil)
                             }
                         } header: {
                             HStack {
@@ -114,18 +115,29 @@ struct EventsView: View {
 
 struct EventRow: View {
     let occurrence: EventOccurrence
+    var isToday = false
 
     private static let dayStyle = Date.FormatStyle().weekday(.abbreviated).day()
 
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(occurrence.contactName).font(.body.weight(.semibold))
+                Text(occurrence.contactName)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(isToday ? Color.accentColor : .primary)
                 EventLine(kind: occurrence.event.kind, text: occurrence.detail)
             }
             Spacer(minLength: 8)
-            Text(occurrence.date.formatted(Self.dayStyle))
-                .font(.footnote).foregroundStyle(.secondary)
+            if isToday {
+                Text("Today")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10).padding(.vertical, 3)
+                    .background(Color.accentColor, in: .capsule)
+            } else {
+                Text(occurrence.date.formatted(Self.dayStyle))
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
         }
         .padding(.vertical, 2)
     }

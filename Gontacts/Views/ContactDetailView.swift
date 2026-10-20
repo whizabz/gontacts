@@ -31,8 +31,15 @@ struct ContactDetailView: View {
                     if !contact.nickname.isEmpty { Text("“\(contact.nickname)”").foregroundStyle(.secondary) }
                     if !contact.subtitle.isEmpty { Text(contact.subtitle).foregroundStyle(.secondary) }
                     if model.store.canSync {
-                        Label("Synced with Google", systemImage: "checkmark").font(.caption)
-                            .foregroundStyle(.green).padding(.top, 2)
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark").imageScale(.small)
+                            Text("Synced with Google")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 2)
                     }
                     actionButtons(contact).padding(.top, 12)
                 }
