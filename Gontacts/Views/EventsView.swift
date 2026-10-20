@@ -45,7 +45,7 @@ struct EventsView: View {
                     ForEach(sections) { section in
                         Section {
                             ForEach(section.occurrences) { o in
-                                NavigationLink(value: o.contactID) { EventRow(occurrence: o, isToday: section.role == .today) }
+                                EventRow(occurrence: o, isToday: section.role == .today).tag(o.id)
                                     .listRowBackground(section.role == .today ? Color.accentColor.opacity(0.14) : nil)
                             }
                         } header: {

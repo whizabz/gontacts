@@ -20,6 +20,7 @@ struct ContactRow: View {
 struct ContactsView: View {
     @Environment(AppModel.self) private var model
     @State private var showNew = false
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     private var sections: [(letter: String, contacts: [Contact])] {
         let grouped = Dictionary(grouping: model.store.sorted, by: \.sectionLetter)
@@ -37,7 +38,7 @@ struct ContactsView: View {
                 ForEach(sections, id: \.letter) { section in
                     Section(section.letter) {
                         ForEach(section.contacts) { contact in
-                            NavigationLink(value: contact.id) { ContactRow(contact: contact) }
+                            ContactRow(contact: contact).tag(contact.id)
                         }
                     }
                     .sectionIndexLabel(section.letter)
@@ -53,6 +54,11 @@ struct ContactsView: View {
             .navigationTitle("Contacts")
             .refreshable { await model.store.sync() }
             .toolbar {
+                if sizeClass == .regular {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { model.showSearch = true } label: { Label("Search", systemImage: "magnifyingglass") }
+                    }
+                }
                 if model.store.canSync {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { Task { await model.store.sync() } } label: {
