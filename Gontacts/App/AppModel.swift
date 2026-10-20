@@ -10,6 +10,8 @@ final class AppModel {
     let settings = ReminderSettings()
 
     var tab: AppTab = .contacts
+    /// Bumped when the user taps the tab they are already on, so that screen can scroll back to its start.
+    var tabReselected: [AppTab: Int] = [:]
     var contactsSelection: String?
     /// Set when a notification asks to open the wish composer for a contact.
     var wishRequestID: String?
@@ -25,6 +27,8 @@ final class AppModel {
             self?.open(contactID: contactID, wish: wish)
         }
     }
+
+    func reselect(_ tab: AppTab) { tabReselected[tab, default: 0] += 1 }
 
     func open(contactID: String, wish: Bool) {
         tab = .contacts

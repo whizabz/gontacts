@@ -46,8 +46,13 @@ struct MainTabs: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        @Bindable var model = model
-        TabView(selection: $model.tab) {
+        TabView(selection: Binding(
+            get: { model.tab },
+            set: { new in
+                if new == model.tab { model.reselect(new) }
+                model.tab = new
+            }
+        )) {
             Tab("Contacts", systemImage: "person.2", value: AppTab.contacts) { ContactsView() }
             Tab("Events", systemImage: "calendar", value: AppTab.events) { EventsView() }
             Tab("Settings", systemImage: "slider.horizontal.3", value: AppTab.settings) { SettingsView() }
