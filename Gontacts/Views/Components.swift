@@ -56,13 +56,3 @@ struct EventLine: View {
         .labelStyle(.titleAndIcon)
     }
 }
-
-struct NoYearBadge: View {
-    var body: some View {
-        Text("no year")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 8).padding(.vertical, 2)
-            .background(.quaternary, in: .capsule)
-    }
-}

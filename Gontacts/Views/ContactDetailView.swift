@@ -102,10 +102,7 @@ struct ContactDetailView: View {
                 Section("Dates") {
                     ForEach(contact.events) { e in
                         LabeledContent {
-                            HStack(spacing: 8) {
-                                Text(e.date.formatted())
-                                if !e.date.hasYear { NoYearBadge() }
-                            }
+                            Text(e.date.formatted())
                         } label: {
                             Label { Text(e.displayTitle) } icon: { Image(systemName: e.kind.symbol).foregroundStyle(e.kind.tint) }
                         }
