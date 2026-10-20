@@ -4,3 +4,4 @@ DerivedData/
 *.xcodeproj
 xcuserdata/
 Config/Secrets.xcconfig
+build-device/
