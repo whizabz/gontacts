@@ -49,6 +49,7 @@ struct ContactsView: View {
                                 NavigationLink(value: contact.id) { ContactRow(contact: contact) }
                             }
                         }
+                        .sectionIndexLabel(section.letter)
                     }
                     Section {} footer: {
                         Text("\(model.store.contacts.count) Contacts").frame(maxWidth: .infinity)

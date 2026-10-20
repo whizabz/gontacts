@@ -39,7 +39,7 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        LSApplicationQueriesSchemes: [sms, mailto, tel]
+        LSApplicationQueriesSchemes: [sms, mailto, tel, whatsapp, tg, sgnl]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: xyz.saltedchips.gontacts
