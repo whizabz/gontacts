@@ -10,6 +10,8 @@ struct ContactDetailView: View {
     @State private var editing = false
     @State private var wishing = false
     @State private var confirmDelete = false
+    /// Bumped on every appearance so the confetti replays each time the contact is opened.
+    @State private var confettiRun = 0
 
     var body: some View {
         if let contact = model.store.contact(id: contactID) {
@@ -135,8 +137,8 @@ struct ContactDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .overlay(alignment: .top) {
-            if !today.isEmpty && !reduceMotion {
-                ConfettiView().frame(maxHeight: .infinity).ignoresSafeArea()
+            if !today.isEmpty && !reduceMotion && model.settings.confetti {
+                ConfettiView().id(confettiRun).frame(maxHeight: .infinity).ignoresSafeArea()
             }
         }
         .toolbar {
@@ -164,6 +166,7 @@ struct ContactDetailView: View {
             }
         } message: { Text("This also deletes it from Google Contacts.") }
         .onAppear {
+            confettiRun += 1
             if model.wishRequestID == contact.id, !today.isEmpty {
                 model.wishRequestID = nil
                 wishing = true

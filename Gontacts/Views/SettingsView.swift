@@ -40,6 +40,14 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("Confetti", isOn: $settings.confetti)
+                } header: {
+                    Text("Celebrations")
+                } footer: {
+                    Text("Shows confetti when you open a contact whose birthday or anniversary is today. It's always skipped when Reduce Motion is on in iOS Settings.")
+                }
+
+                Section {
                     NavigationLink("Why This App Exists") { WhyThisAppExistsView() }
                 }
 
