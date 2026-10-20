@@ -95,4 +95,29 @@ final class EventDateTests: XCTestCase {
         XCTAssertEqual(c.givenName, "Old")
         XCTAssertTrue(c.addresses.isEmpty)
     }
+
+    func testNewFieldsRoundTripAndUpdatesOnlySendChangedGroups() throws {
+        let json = #"{"resourceName":"people/c5","etag":"e","names":[{"givenName":"Ada","familyName":"King","phoneticGivenName":"AY-da"}],"organizations":[{"name":"Acme","title":"CEO","department":"Ops"},{"name":"Side Co","title":"Advisor"}],"imClients":[{"username":"ada","protocol":"WhatsApp"}],"userDefined":[{"key":"Pronouns","value":"she/her"}],"phoneNumbers":[{"value":"+44 20 7946 0000","type":"mobile"}]}"#
+        let original = try XCTUnwrap(JSONDecoder().decode(PersonDTO.self, from: Data(json.utf8)).toContact())
+        XCTAssertEqual(original.department, "Ops")
+        XCTAssertEqual(original.phoneticGivenName, "AY-da")
+        XCTAssertEqual(original.otherOrganizations.first?.name, "Side Co")
+        XCTAssertEqual(original.ims.first?.label, "WhatsApp")
+        XCTAssertEqual(original.customFields.first?.label, "Pronouns")
+
+        XCTAssertEqual(original.changedGoogleFields(from: original), [])
+
+        var edited = original
+        edited.phones[0].value = "+44 20 7946 1111"
+        XCTAssertEqual(edited.changedGoogleFields(from: original), ["phoneNumbers"])
+
+        edited.department = "Engineering"
+        XCTAssertEqual(Set(edited.changedGoogleFields(from: original)), ["phoneNumbers", "organizations"])
+
+        // Editing the primary organization must not drop the second one.
+        let body = PersonDTO(contact: edited)
+        XCTAssertEqual(body.organizations?.count, 2)
+        XCTAssertEqual(body.organizations?.first?.department, "Engineering")
+        XCTAssertEqual(body.names?.first?.phoneticGivenName, "AY-da")
+    }
 }

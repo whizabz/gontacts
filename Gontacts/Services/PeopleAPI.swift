@@ -39,8 +39,10 @@ final class PeopleAPI {
         return dto.toContact() ?? contact
     }
 
-    func update(_ contact: Contact) async throws -> Contact {
-        let query = [URLQueryItem(name: "updatePersonFields", value: PersonDTO.writeFields), URLQueryItem(name: "personFields", value: PersonDTO.readFields)]
+    /// Updates only `fields` (People API field names), leaving every other part of the contact untouched.
+    func update(_ contact: Contact, fields: [String]) async throws -> Contact {
+        guard !fields.isEmpty else { return contact }
+        let query = [URLQueryItem(name: "updatePersonFields", value: fields.joined(separator: ",")), URLQueryItem(name: "personFields", value: PersonDTO.readFields)]
         let dto: PersonDTO = try await send("\(contact.id):updateContact", method: "PATCH", query: query, body: PersonDTO(contact: contact))
         return dto.toContact() ?? contact
     }

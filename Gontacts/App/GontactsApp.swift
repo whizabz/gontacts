@@ -44,6 +44,7 @@ struct RootView: View {
 
 struct MainTabs: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         TabView(selection: Binding(
@@ -56,6 +57,23 @@ struct MainTabs: View {
             Tab("Contacts", systemImage: "person.2", value: AppTab.contacts) { ContactsView() }
             Tab("Events", systemImage: "calendar", value: AppTab.events) { EventsView() }
             Tab("Settings", systemImage: "slider.horizontal.3", value: AppTab.settings) { SettingsView() }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            // On iPhone the search button floats beside the tab bar. On iPad the tab bar is at the top, so
+            // search lives in the Contacts toolbar instead.
+            if sizeClass == .compact {
+                Button { model.showSearch = true } label: {
+                    Image(systemName: "magnifyingglass").font(.title3.weight(.medium)).frame(width: 50, height: 50)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .accessibilityLabel("Search")
+                .padding(.trailing, 8)
+                .padding(.bottom, 4)
+            }
+        }
+        .fullScreenCover(isPresented: Binding(get: { model.showSearch }, set: { model.showSearch = $0 })) {
+            SearchScreen()
         }
     }
 }

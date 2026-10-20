@@ -47,6 +47,14 @@ struct PostalAddress: Hashable, Codable, Identifiable, Sendable {
     }
 }
 
+/// An additional organization beyond the primary one. Not editable in the app, but kept so editing the
+/// primary organization never drops the others.
+struct OrganizationEntry: Hashable, Codable, Sendable {
+    var name = ""
+    var title = ""
+    var department = ""
+}
+
 struct ContactEvent: Hashable, Codable, Identifiable, Sendable {
     var id = UUID()
     var kind: EventKind
@@ -71,8 +79,13 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
     var familyName = ""
     var nameSuffix = ""
     var nickname = ""
+    var phoneticGivenName = ""
+    var phoneticMiddleName = ""
+    var phoneticFamilyName = ""
     var organization = ""
+    var department = ""
     var jobTitle = ""
+    var otherOrganizations: [OrganizationEntry] = []
 
     var phones: [LabeledValue] = []
     var emails: [LabeledValue] = []
@@ -80,6 +93,10 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
     var urls: [LabeledValue] = []
     /// Related people: `label` is the relationship ("spouse", "friend"), `value` the person's name.
     var relations: [LabeledValue] = []
+    /// Chat and social handles: `label` is the service ("WhatsApp"), `value` the username.
+    var ims: [LabeledValue] = []
+    /// Google "custom fields": `label` is the field name, `value` its content.
+    var customFields: [LabeledValue] = []
     var events: [ContactEvent] = []
     var notes = ""
     var photoURL: URL?
@@ -89,7 +106,8 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, etag, namePrefix, givenName, middleName, familyName, nameSuffix, nickname, organization, jobTitle
-        case phones, emails, addresses, urls, relations, events, notes, photoURL
+        case phoneticGivenName, phoneticMiddleName, phoneticFamilyName, department, otherOrganizations
+        case phones, emails, addresses, urls, relations, ims, customFields, events, notes, photoURL
     }
 
     init(from decoder: Decoder) throws {
@@ -104,6 +122,13 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
         nickname = try c.decodeIfPresent(String.self, forKey: .nickname) ?? ""
         organization = try c.decodeIfPresent(String.self, forKey: .organization) ?? ""
         jobTitle = try c.decodeIfPresent(String.self, forKey: .jobTitle) ?? ""
+        phoneticGivenName = try c.decodeIfPresent(String.self, forKey: .phoneticGivenName) ?? ""
+        phoneticMiddleName = try c.decodeIfPresent(String.self, forKey: .phoneticMiddleName) ?? ""
+        phoneticFamilyName = try c.decodeIfPresent(String.self, forKey: .phoneticFamilyName) ?? ""
+        department = try c.decodeIfPresent(String.self, forKey: .department) ?? ""
+        otherOrganizations = try c.decodeIfPresent([OrganizationEntry].self, forKey: .otherOrganizations) ?? []
+        ims = try c.decodeIfPresent([LabeledValue].self, forKey: .ims) ?? []
+        customFields = try c.decodeIfPresent([LabeledValue].self, forKey: .customFields) ?? []
         phones = try c.decodeIfPresent([LabeledValue].self, forKey: .phones) ?? []
         emails = try c.decodeIfPresent([LabeledValue].self, forKey: .emails) ?? []
         addresses = try c.decodeIfPresent([PostalAddress].self, forKey: .addresses) ?? []
@@ -132,7 +157,7 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
     }
 
     var subtitle: String {
-        [jobTitle, organization].filter { !$0.isEmpty }.joined(separator: " · ")
+        [jobTitle, department, organization].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     /// Letter used for the A–Z list; "#" for anything non-alphabetic.
@@ -148,5 +173,29 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
         givenName.isEmpty && familyName.isEmpty && middleName.isEmpty && nickname.isEmpty && organization.isEmpty
             && phones.allSatisfy { $0.value.isEmpty } && emails.allSatisfy { $0.value.isEmpty }
             && addresses.allSatisfy(\.isEmpty) && urls.allSatisfy { $0.value.isEmpty } && relations.allSatisfy { $0.value.isEmpty }
+            && ims.allSatisfy { $0.value.isEmpty } && customFields.allSatisfy { $0.value.isEmpty }
+    }
+
+    /// People API field groups that differ from `original`. Updates send only these, so anything the app
+    /// doesn't edit (or doesn't fully model) is left exactly as Google has it.
+    func changedGoogleFields(from original: Contact) -> [String] {
+        func values(_ a: [LabeledValue]) -> [String] { a.filter { !$0.value.isEmpty }.map { "\($0.label)\u{1F}\($0.value)" } }
+        var fields: [String] = []
+        if [namePrefix, givenName, middleName, familyName, nameSuffix, phoneticGivenName, phoneticMiddleName, phoneticFamilyName]
+            != [original.namePrefix, original.givenName, original.middleName, original.familyName, original.nameSuffix,
+                original.phoneticGivenName, original.phoneticMiddleName, original.phoneticFamilyName] { fields.append("names") }
+        if nickname != original.nickname { fields.append("nicknames") }
+        if [organization, department, jobTitle] != [original.organization, original.department, original.jobTitle] { fields.append("organizations") }
+        if values(phones) != values(original.phones) { fields.append("phoneNumbers") }
+        if values(emails) != values(original.emails) { fields.append("emailAddresses") }
+        if addresses.filter({ !$0.isEmpty }) != original.addresses.filter({ !$0.isEmpty }) { fields.append("addresses") }
+        if values(urls) != values(original.urls) { fields.append("urls") }
+        if values(relations) != values(original.relations) { fields.append("relations") }
+        if values(ims) != values(original.ims) { fields.append("imClients") }
+        if values(customFields) != values(original.customFields) { fields.append("userDefined") }
+        if events.filter({ $0.kind == .birthday }) != original.events.filter({ $0.kind == .birthday }) { fields.append("birthdays") }
+        if events.filter({ $0.kind != .birthday }) != original.events.filter({ $0.kind != .birthday }) { fields.append("events") }
+        if notes != original.notes { fields.append("biographies") }
+        return fields
     }
 }

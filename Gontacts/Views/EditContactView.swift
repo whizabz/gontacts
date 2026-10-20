@@ -7,26 +7,30 @@ struct EditContactView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var draft: Contact
-    @State private var shown: Set<NameField>
+    @State private var shown: Set<OptionalField>
     @State private var expandedEvent: UUID?
     @State private var confirmDiscard = false
     @State private var saving = false
     @State private var errorMessage: String?
 
+    /// Optional name and organization fields, revealed from "Add Field" (or already shown when the contact has a value).
+    enum OptionalField: Hashable { case prefix, middleName, suffix, nickname, phonetic, department }
+
+    private static let messagingServices = ["WhatsApp", "Telegram", "Signal", "Skype", "WeChat", "Instagram", "Facebook", "LinkedIn", "X", "Threads", "Mastodon", "Bluesky", "Other"]
+
     init(contact: Contact, onSaved: ((Contact) -> Void)? = nil) {
         original = contact
         self.onSaved = onSaved
         _draft = State(initialValue: contact)
-        var initial = Set<NameField>()
+        var initial = Set<OptionalField>()
         if !contact.namePrefix.isEmpty { initial.insert(.prefix) }
         if !contact.middleName.isEmpty { initial.insert(.middleName) }
         if !contact.nameSuffix.isEmpty { initial.insert(.suffix) }
         if !contact.nickname.isEmpty { initial.insert(.nickname) }
+        if ![contact.phoneticGivenName, contact.phoneticMiddleName, contact.phoneticFamilyName].allSatisfy(\.isEmpty) { initial.insert(.phonetic) }
+        if !contact.department.isEmpty { initial.insert(.department) }
         _shown = State(initialValue: initial)
     }
-
-    /// Optional name fields, revealed from the "Add Field" menu (or when the contact already has a value).
-    enum NameField: Hashable { case prefix, middleName, suffix, nickname }
 
     private var hasChanges: Bool { draft != original }
 
@@ -40,13 +44,22 @@ struct EditContactView: View {
                     TextField("Last name", text: $draft.familyName).textContentType(.familyName)
                     if shown.contains(.suffix) { TextField("Name suffix", text: $draft.nameSuffix) }
                     if shown.contains(.nickname) { TextField("Nickname", text: $draft.nickname) }
+                    if shown.contains(.phonetic) {
+                        TextField("Phonetic first name", text: $draft.phoneticGivenName)
+                        TextField("Phonetic middle name", text: $draft.phoneticMiddleName)
+                        TextField("Phonetic last name", text: $draft.phoneticFamilyName)
+                    }
                     TextField("Company", text: $draft.organization)
+                    if shown.contains(.department) { TextField("Department", text: $draft.department) }
                     TextField("Job title", text: $draft.jobTitle)
                 }
 
                 valueSection("Phone", values: $draft.phones, labels: ["mobile", "home", "work", "other"], keyboard: .phonePad)
                 valueSection("Email", values: $draft.emails, labels: ["home", "work", "other"], keyboard: .emailAddress)
 
+                if !draft.ims.isEmpty {
+                    valueSection("Messaging or social", values: $draft.ims, labels: Self.messagingServices, keyboard: .default, labelWidth: 96, showAdd: false)
+                }
                 if !draft.addresses.isEmpty {
                     Section("Address") {
                         ForEach($draft.addresses) { $address in AddressEditor(address: $address) }
@@ -54,10 +67,25 @@ struct EditContactView: View {
                     }
                 }
                 if !draft.urls.isEmpty {
-                    valueSection("Website", values: $draft.urls, labels: ["homepage", "blog", "work", "profile", "other"], keyboard: .URL)
+                    valueSection("Website", values: $draft.urls, labels: ["homepage", "blog", "work", "profile", "other"], keyboard: .URL, showAdd: false)
                 }
                 if !draft.relations.isEmpty {
-                    valueSection("Related person", values: $draft.relations, labels: ["spouse", "partner", "child", "parent", "sibling", "friend", "manager", "assistant", "other"], keyboard: .default, capitalize: true)
+                    valueSection("Related person", values: $draft.relations, labels: ["spouse", "partner", "child", "parent", "sibling", "friend", "manager", "assistant", "other"], keyboard: .default, capitalize: true, showAdd: false)
+                }
+                if !draft.customFields.isEmpty {
+                    Section {
+                        ForEach($draft.customFields) { $field in
+                            VStack(alignment: .leading, spacing: 6) {
+                                TextField("Field name", text: $field.label).font(.subheadline).foregroundStyle(.secondary)
+                                TextField("Value", text: $field.value)
+                            }
+                        }
+                        .onDelete { draft.customFields.remove(atOffsets: $0) }
+                    } header: {
+                        Text("Custom fields")
+                    } footer: {
+                        Text("Custom fields sync to Google Contacts. Apple Contacts doesn't show them.")
+                    }
                 }
 
                 Section("Dates") {
@@ -83,14 +111,25 @@ struct EditContactView: View {
 
                 Section {
                     Menu {
-                        if !shown.contains(.prefix) { Button("Name prefix") { withAnimation { _ = shown.insert(.prefix) } } }
-                        if !shown.contains(.middleName) { Button("Middle name") { withAnimation { _ = shown.insert(.middleName) } } }
-                        if !shown.contains(.suffix) { Button("Name suffix") { withAnimation { _ = shown.insert(.suffix) } } }
-                        if !shown.contains(.nickname) { Button("Nickname") { withAnimation { _ = shown.insert(.nickname) } } }
-                        Divider()
-                        Button("Address", systemImage: "mappin.and.ellipse") { withAnimation { draft.addresses.append(PostalAddress()) } }
-                        Button("Website", systemImage: "link") { withAnimation { draft.urls.append(LabeledValue(label: "homepage", value: "")) } }
-                        Button("Related person", systemImage: "person.2") { withAnimation { draft.relations.append(LabeledValue(label: "friend", value: "")) } }
+                        Section("Name") {
+                            if !shown.contains(.prefix) { Button("Prefix") { reveal(.prefix) } }
+                            if !shown.contains(.middleName) { Button("Middle name") { reveal(.middleName) } }
+                            if !shown.contains(.suffix) { Button("Suffix") { reveal(.suffix) } }
+                            if !shown.contains(.nickname) { Button("Nickname") { reveal(.nickname) } }
+                            if !shown.contains(.phonetic) { Button("Phonetic pronunciation") { reveal(.phonetic) } }
+                        }
+                        Section("Work") {
+                            if !shown.contains(.department) { Button("Department") { reveal(.department) } }
+                        }
+                        Section("Contact info") {
+                            Button("Address", systemImage: "mappin.and.ellipse") { withAnimation { draft.addresses.append(PostalAddress()) } }
+                            Button("Website", systemImage: "link") { withAnimation { draft.urls.append(LabeledValue(label: "homepage", value: "")) } }
+                            Button("Messaging or social", systemImage: "bubble.left.and.bubble.right") { withAnimation { draft.ims.append(LabeledValue(label: "WhatsApp", value: "")) } }
+                            Button("Related person", systemImage: "person.2") { withAnimation { draft.relations.append(LabeledValue(label: "friend", value: "")) } }
+                        }
+                        Section("Other") {
+                            Button("Custom field", systemImage: "square.and.pencil") { withAnimation { draft.customFields.append(LabeledValue(label: "", value: "")) } }
+                        }
                     } label: {
                         Label("Add Field", systemImage: "plus.circle.fill")
                     }
@@ -119,6 +158,8 @@ struct EditContactView: View {
         .interactiveDismissDisabled(hasChanges)
     }
 
+    private func reveal(_ field: OptionalField) { withAnimation { _ = shown.insert(field) } }
+
     private func add(_ kind: EventKind) {
         let today = Calendar.current.dateComponents([.month, .day], from: .now)
         let event = ContactEvent(kind: kind, date: EventDate(month: today.month ?? 1, day: today.day ?? 1))
@@ -130,7 +171,7 @@ struct EditContactView: View {
         saving = true
         Task {
             do {
-                let saved = try await model.store.save(draft)
+                let saved = try await model.store.save(draft, original: original)
                 onSaved?(saved)
                 dismiss()
             } catch {
@@ -140,25 +181,29 @@ struct EditContactView: View {
         }
     }
 
-    private func valueSection(_ title: String, values: Binding<[LabeledValue]>, labels: [String], keyboard: UIKeyboardType, capitalize: Bool = false) -> some View {
+    private func valueSection(_ title: String, values: Binding<[LabeledValue]>, labels: [String], keyboard: UIKeyboardType, capitalize: Bool = false, labelWidth: CGFloat = 84, showAdd: Bool = true) -> some View {
         Section {
             ForEach(values) { $item in
                 HStack {
                     Menu {
                         Picker("Label", selection: $item.label) {
-                            ForEach(labels, id: \.self) { Text($0.capitalized).tag($0) }
+                            // Keep an unknown label (e.g. a custom one set in Google) selectable.
+                            if !labels.contains(item.label) { Text(item.label.displayLabel).tag(item.label) }
+                            ForEach(labels, id: \.self) { Text($0.displayLabel).tag($0) }
                         }
                     } label: {
-                        Text(item.label.capitalized).frame(width: 84, alignment: .leading)
+                        Text(item.label.displayLabel).lineLimit(1).frame(width: labelWidth, alignment: .leading)
                     }
                     TextField(title, text: $item.value).keyboardType(keyboard).textInputAutocapitalization(capitalize ? .words : .never)
                 }
             }
             .onDelete { values.wrappedValue.remove(atOffsets: $0) }
-            Button {
-                values.wrappedValue.append(LabeledValue(label: labels[0], value: ""))
-            } label: {
-                Label("Add \(title.lowercased())", systemImage: "plus.circle.fill")
+            if showAdd {
+                Button {
+                    values.wrappedValue.append(LabeledValue(label: labels[0], value: ""))
+                } label: {
+                    Label("Add \(title.lowercased())", systemImage: "plus.circle.fill")
+                }
             }
         }
     }

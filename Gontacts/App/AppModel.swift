@@ -13,6 +13,7 @@ final class AppModel {
     /// Bumped when the user taps the tab they are already on, so that screen can scroll back to its start.
     var tabReselected: [AppTab: Int] = [:]
     var contactsSelection: String?
+    var showSearch = false
     /// Set when a notification asks to open the wish composer for a contact.
     var wishRequestID: String?
 

@@ -9,6 +9,9 @@ struct PersonDTO: Codable {
         var middleName: String?
         var familyName: String?
         var honorificSuffix: String?
+        var phoneticGivenName: String?
+        var phoneticMiddleName: String?
+        var phoneticFamilyName: String?
     }
     struct Field: Codable { var value: String?; var type: String?; var formattedType: String? }
     struct Nickname: Codable { var value: String? }
@@ -24,7 +27,11 @@ struct PersonDTO: Codable {
         var country: String?
     }
     struct Relation: Codable { var person: String?; var type: String?; var formattedType: String? }
-    struct Org: Codable { var name: String?; var title: String? }
+    struct Org: Codable { var name: String?; var title: String?; var department: String? }
+    struct IM: Codable { var username: String?; var type: String?; var protocolName: String?; var formattedProtocol: String?
+        enum CodingKeys: String, CodingKey { case username, type, protocolName = "protocol", formattedProtocol }
+    }
+    struct UserDefined: Codable { var key: String?; var value: String? }
     struct DateDTO: Codable { var year: Int?; var month: Int?; var day: Int? }
     struct Birthday: Codable { var date: DateDTO? }
     struct Event: Codable { var date: DateDTO?; var type: String?; var formattedType: String? }
@@ -39,6 +46,8 @@ struct PersonDTO: Codable {
     var addresses: [Address]?
     var urls: [Field]?
     var relations: [Relation]?
+    var imClients: [IM]?
+    var userDefined: [UserDefined]?
     var organizations: [Org]?
     var birthdays: [Birthday]?
     var events: [Event]?
@@ -47,9 +56,9 @@ struct PersonDTO: Codable {
 }
 
 extension PersonDTO {
-    static let readFields = "names,nicknames,phoneNumbers,emailAddresses,addresses,urls,relations,organizations,birthdays,events,biographies,photos"
-    /// Every field in this mask is replaced wholesale on update, so each must be fully round-tripped in `toContact`/`init(contact:)`.
-    static let writeFields = "names,nicknames,phoneNumbers,emailAddresses,addresses,urls,relations,organizations,birthdays,events,biographies"
+    static let readFields = "names,nicknames,phoneNumbers,emailAddresses,addresses,urls,relations,imClients,userDefined,organizations,birthdays,events,biographies,photos"
+    /// Used when creating a contact. Updates send only the groups that changed (`Contact.changedGoogleFields`).
+    static let writeFields = "names,nicknames,phoneNumbers,emailAddresses,addresses,urls,relations,imClients,userDefined,organizations,birthdays,events,biographies"
 
     func toContact() -> Contact? {
         guard let resourceName else { return nil }
@@ -61,10 +70,19 @@ extension PersonDTO {
             c.middleName = n.middleName ?? ""
             c.familyName = n.familyName ?? ""
             c.nameSuffix = n.honorificSuffix ?? ""
+            c.phoneticGivenName = n.phoneticGivenName ?? ""
+            c.phoneticMiddleName = n.phoneticMiddleName ?? ""
+            c.phoneticFamilyName = n.phoneticFamilyName ?? ""
         }
         c.nickname = nicknames?.first?.value ?? ""
         c.organization = organizations?.first?.name ?? ""
         c.jobTitle = organizations?.first?.title ?? ""
+        c.department = organizations?.first?.department ?? ""
+        c.otherOrganizations = (organizations ?? []).dropFirst().map {
+            OrganizationEntry(name: $0.name ?? "", title: $0.title ?? "", department: $0.department ?? "")
+        }
+        c.ims = (imClients ?? []).compactMap { i in i.username.map { LabeledValue(label: i.formattedProtocol ?? i.protocolName ?? i.type ?? "other", value: $0) } }
+        c.customFields = (userDefined ?? []).compactMap { u in u.value.map { LabeledValue(label: u.key ?? "", value: $0) } }
         c.phones = (phoneNumbers ?? []).compactMap { f in f.value.map { LabeledValue(label: f.type ?? f.formattedType ?? "other", value: $0) } }
         c.emails = (emailAddresses ?? []).compactMap { f in f.value.map { LabeledValue(label: f.type ?? f.formattedType ?? "other", value: $0) } }
         c.urls = (urls ?? []).compactMap { f in f.value.map { LabeledValue(label: f.type ?? f.formattedType ?? "other", value: $0) } }
@@ -99,7 +117,9 @@ extension PersonDTO {
         resourceName = c.isNew ? nil : c.id
         etag = c.etag
         names = [Name(honorificPrefix: empty(c.namePrefix), givenName: c.givenName, middleName: empty(c.middleName),
-                      familyName: c.familyName, honorificSuffix: empty(c.nameSuffix))]
+                      familyName: c.familyName, honorificSuffix: empty(c.nameSuffix),
+                      phoneticGivenName: empty(c.phoneticGivenName), phoneticMiddleName: empty(c.phoneticMiddleName),
+                      phoneticFamilyName: empty(c.phoneticFamilyName))]
         nicknames = c.nickname.isEmpty ? [] : [Nickname(value: c.nickname)]
         phoneNumbers = c.phones.filter { !$0.value.isEmpty }.map { Field(value: $0.value, type: $0.label) }
         emailAddresses = c.emails.filter { !$0.value.isEmpty }.map { Field(value: $0.value, type: $0.label) }
@@ -109,7 +129,10 @@ extension PersonDTO {
             Address(type: a.label, streetAddress: empty(a.street), extendedAddress: empty(a.extendedAddress), poBox: empty(a.poBox),
                     city: empty(a.city), region: empty(a.region), postalCode: empty(a.postalCode), country: empty(a.country))
         }
-        organizations = (c.organization.isEmpty && c.jobTitle.isEmpty) ? [] : [Org(name: c.organization, title: c.jobTitle)]
+        let primary = (c.organization.isEmpty && c.jobTitle.isEmpty && c.department.isEmpty) ? [] : [Org(name: empty(c.organization), title: empty(c.jobTitle), department: empty(c.department))]
+        organizations = primary + c.otherOrganizations.map { Org(name: empty($0.name), title: empty($0.title), department: empty($0.department)) }
+        imClients = c.ims.filter { !$0.value.isEmpty }.map { IM(username: $0.value, type: nil, protocolName: $0.label, formattedProtocol: nil) }
+        userDefined = c.customFields.filter { !$0.value.isEmpty && !$0.label.isEmpty }.map { UserDefined(key: $0.label, value: $0.value) }
         biographies = c.notes.isEmpty ? [] : [Field(value: c.notes)]
         // Year-less dates are written as {month, day} only: Google's own representation.
         birthdays = c.events.filter { $0.kind == .birthday }.map { Birthday(date: DateDTO(eventDate: $0.date)) }

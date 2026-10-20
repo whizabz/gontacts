@@ -141,7 +141,7 @@ final class ContactsStore {
 
     /// Saves to Google (or locally when showing sample contacts) and returns the saved contact.
     @discardableResult
-    func save(_ contact: Contact) async throws -> Contact {
+    func save(_ contact: Contact, original: Contact? = nil) async throws -> Contact {
         var contact = contact
         contact.events = contact.events.map { var e = $0; e.date.clamp(); return e }
         let saved: Contact
@@ -150,7 +150,13 @@ final class ContactsStore {
             saved = contact
             upsert(saved, into: &sampleContacts)
         } else {
-            saved = contact.isNew ? try await api.create(contact) : try await api.update(contact)
+            if contact.isNew {
+                saved = try await api.create(contact)
+            } else {
+                // Only the field groups that changed are sent, so data the app doesn't model survives the edit.
+                let fields = original.map { contact.changedGoogleFields(from: $0) } ?? PersonDTO.writeFields.split(separator: ",").map(String.init)
+                saved = try await api.update(contact, fields: fields)
+            }
             upsert(saved, into: &liveContacts)
         }
         rebuild()
@@ -189,7 +195,7 @@ final class ContactsStore {
     }
 
     private static func searchKey(for c: Contact) -> String {
-        let parts = [c.displayName, c.nickname, c.organization, c.jobTitle] + c.emails.map(\.value) + c.phones.map(\.value)
+        let parts = [c.displayName, c.nickname, c.organization, c.department, c.jobTitle] + c.emails.map(\.value) + c.phones.map(\.value) + c.ims.map(\.value)
         return fold(parts.joined(separator: " ")) + " " + c.phones.map { $0.value.filter(\.isNumber) }.joined(separator: " ")
     }
 

@@ -56,3 +56,8 @@ struct EventLine: View {
         .labelStyle(.titleAndIcon)
     }
 }
+
+extension String {
+    /// "mobile" becomes "Mobile", but names that already have capitals, like "WhatsApp", are left alone.
+    var displayLabel: String { self == lowercased() ? capitalized : self }
+}

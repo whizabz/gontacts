@@ -105,6 +105,18 @@ struct ContactDetailView: View {
                 }
             }
 
+            if !contact.ims.isEmpty {
+                Section("Messaging and social") {
+                    ForEach(contact.ims) { i in LabeledContent(i.label.displayLabel, value: i.value) }
+                }
+            }
+
+            if !contact.customFields.isEmpty {
+                Section("Custom fields") {
+                    ForEach(contact.customFields) { f in LabeledContent(f.label, value: f.value) }
+                }
+            }
+
             if !contact.events.isEmpty {
                 Section("Dates") {
                     ForEach(contact.events) { e in

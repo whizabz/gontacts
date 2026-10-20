@@ -20,7 +20,7 @@ struct ContactRow: View {
 struct ContactsView: View {
     @Environment(AppModel.self) private var model
     @State private var showNew = false
-    @State private var query = ""
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     private var sections: [(letter: String, contacts: [Contact])] {
         let grouped = Dictionary(grouping: model.store.sorted, by: \.sectionLetter)
@@ -31,39 +31,34 @@ struct ContactsView: View {
         }.map { ($0, grouped[$0] ?? []) }
     }
 
-    private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
-
     var body: some View {
         @Bindable var model = model
         NavigationSplitView {
             List(selection: $model.contactsSelection) {
-                if isSearching {
-                    let results = model.store.search(query)
-                    ForEach(results) { contact in
-                        NavigationLink(value: contact.id) { ContactRow(contact: contact) }
-                    }
-                } else {
-                    ForEach(sections, id: \.letter) { section in
-                        Section(section.letter) {
-                            ForEach(section.contacts) { contact in
-                                NavigationLink(value: contact.id) { ContactRow(contact: contact) }
-                            }
+                ForEach(sections, id: \.letter) { section in
+                    Section(section.letter) {
+                        ForEach(section.contacts) { contact in
+                            NavigationLink(value: contact.id) { ContactRow(contact: contact) }
                         }
-                        .sectionIndexLabel(section.letter)
                     }
-                    Section {} footer: {
-                        Text("\(model.store.contacts.count) Contacts").frame(maxWidth: .infinity)
-                    }
+                    .sectionIndexLabel(section.letter)
+                }
+                Section {} footer: {
+                    Text("\(model.store.contacts.count) Contacts").frame(maxWidth: .infinity)
                 }
             }
             .listStyle(.plain)
             .environment(\.defaultMinListHeaderHeight, 30)
             .listSectionSpacing(.compact)
-            .listSectionIndexVisibility(isSearching ? .hidden : .visible)
+            .listSectionIndexVisibility(.visible)
             .navigationTitle("Contacts")
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search")
             .refreshable { await model.store.sync() }
             .toolbar {
+                if sizeClass == .regular {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { model.showSearch = true } label: { Label("Search", systemImage: "magnifyingglass") }
+                    }
+                }
                 if model.store.canSync {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { Task { await model.store.sync() } } label: {
@@ -79,8 +74,6 @@ struct ContactsView: View {
             .overlay {
                 if model.store.contacts.isEmpty {
                     ContentUnavailableView("No Contacts", systemImage: "person.2", description: Text("Pull down to sync, or tap + to add one."))
-                } else if isSearching, model.store.search(query).isEmpty {
-                    ContentUnavailableView.search(text: query)
                 }
             }
         } detail: {
