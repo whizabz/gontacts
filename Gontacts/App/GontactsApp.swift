@@ -48,10 +48,6 @@ struct MainTabs: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     private var usesFloatingBar: Bool { sizeClass == .compact }
-    /// On iPhone a contact opens full screen; the tab bar steps aside until you go back.
-    private var showingDetail: Bool {
-        (model.tab == .contacts && model.contactsSelection != nil) || (model.tab == .events && model.eventsSelection != nil)
-    }
 
     var body: some View {
         TabView(selection: Binding(get: { model.tab }, set: select)) {
@@ -63,11 +59,7 @@ struct MainTabs: View {
         // search tab renders differently between iOS 26 releases (on some it becomes a fourth tab icon).
         .toolbarVisibility(usesFloatingBar ? .hidden : .automatic, for: .tabBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            // No animation: the bar appears and disappears instantly, so it never fades while the screen slides.
-            Group {
-                if usesFloatingBar && !showingDetail { FloatingTabBar(selection: Binding(get: { model.tab }, set: select)) { model.showSearch = true } }
-            }
-            .transaction { $0.animation = nil }
+            if usesFloatingBar { FloatingTabBar(selection: Binding(get: { model.tab }, set: select)) { model.showSearch = true } }
         }
         .fullScreenCover(isPresented: Binding(get: { model.showSearch }, set: { model.showSearch = $0 })) {
             SearchScreen()
