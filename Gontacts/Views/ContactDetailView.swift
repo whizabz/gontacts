@@ -7,7 +7,6 @@ struct ContactDetailView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var editing = false
     @State private var wishing = false
     @State private var confirmDelete = false
@@ -144,8 +143,6 @@ struct ContactDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        // On iPhone the contact takes the whole screen; the system hides and restores the tab bar with the push.
-        .toolbarVisibility(sizeClass == .compact ? .hidden : .automatic, for: .tabBar)
         .overlay(alignment: .top) {
             if !today.isEmpty && !reduceMotion && model.settings.confetti {
                 ConfettiView().id(confettiRun).frame(maxHeight: .infinity).ignoresSafeArea()
