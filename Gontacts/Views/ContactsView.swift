@@ -34,7 +34,6 @@ struct ContactRow: View {
 struct ContactsView: View {
     @Environment(AppModel.self) private var model
     @State private var showNew = false
-    @State private var scrollHandle = ScrollViewHandle.Box()
     @AppStorage("contacts.sort") private var sort = ContactSort.name
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -70,16 +69,6 @@ struct ContactsView: View {
                 }
             }
             .listStyle(.plain)
-            .background(ScrollViewHandle(box: scrollHandle))
-            .onChange(of: model.tabReselected[.contacts] ?? 0) { _, _ in
-                // Tapping Contacts again: first leave an open contact, then (next tap) scroll to the top.
-                if model.contactsSelection != nil {
-                    model.contactsSelection = nil
-                } else {
-                    scrollHandle.stopMomentum()
-                    scrollHandle.scrollToTop()
-                }
-            }
             .environment(\.defaultMinListHeaderHeight, 30)
             .listSectionSpacing(.compact)
             .listSectionIndexVisibility(sort == .name ? .visible : .hidden)

@@ -13,12 +13,6 @@ struct ScrollViewHandle: UIViewRepresentable {
             guard let sv = scrollView, sv.isDecelerating || sv.isDragging else { return }
             sv.setContentOffset(sv.contentOffset, animated: false)
         }
-
-        /// Scrolls to the very top, under the large title.
-        func scrollToTop() {
-            guard let sv = scrollView else { return }
-            sv.setContentOffset(CGPoint(x: 0, y: -sv.adjustedContentInset.top), animated: true)
-        }
     }
 
     let box: Box
