@@ -63,9 +63,12 @@ struct MainTabs: View {
         // search tab renders differently between iOS 26 releases (on some it becomes a fourth tab icon).
         .toolbarVisibility(usesFloatingBar ? .hidden : .automatic, for: .tabBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if usesFloatingBar && !showingDetail { FloatingTabBar(selection: Binding(get: { model.tab }, set: select)) { model.showSearch = true } }
+            // No animation: the bar appears and disappears instantly, so it never fades while the screen slides.
+            Group {
+                if usesFloatingBar && !showingDetail { FloatingTabBar(selection: Binding(get: { model.tab }, set: select)) { model.showSearch = true } }
+            }
+            .transaction { $0.animation = nil }
         }
-        .animation(.smooth, value: showingDetail)
         .fullScreenCover(isPresented: Binding(get: { model.showSearch }, set: { model.showSearch = $0 })) {
             SearchScreen()
         }
