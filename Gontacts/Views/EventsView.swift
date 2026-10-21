@@ -84,7 +84,8 @@ struct EventsView: View {
                 }
                 .animation(.smooth, value: relation)
                 .onChange(of: model.tabReselected[.events] ?? 0) { _, _ in
-                    if let anchor { jumpToToday(anchor, proxy) }
+                    if model.eventsSelection != nil { model.eventsSelection = nil }
+                    else if let anchor { jumpToToday(anchor, proxy) }
                 }
                 .task(id: anchor) {
                     guard let anchor else { return }
