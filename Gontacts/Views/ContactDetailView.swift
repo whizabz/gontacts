@@ -24,6 +24,7 @@ struct ContactDetailView: View {
     private func content(_ contact: Contact) -> some View {
         let today = EventTimeline.events(on: .now, for: contact)
         let muted = model.settings.mutedIDs.contains(contact.id)
+        let syncing = model.store.syncingIDs.contains(contact.id)
 
         return List {
             Section {
@@ -34,11 +35,17 @@ struct ContactDetailView: View {
                     if !contact.subtitle.isEmpty { Text(contact.subtitle).foregroundStyle(.secondary) }
                     if model.store.canSync {
                         HStack(spacing: 4) {
-                            Image(systemName: "checkmark").imageScale(.small)
-                            Text("Synced with Google")
+                            if syncing {
+                                ProgressView().controlSize(.mini)
+                                Text("Syncing with Google…")
+                            } else {
+                                Image(systemName: "checkmark").imageScale(.small)
+                                Text("Synced with Google")
+                            }
                         }
                         .font(.caption)
-                        .foregroundStyle(.green)
+                        .foregroundStyle(syncing ? Color.secondary : Color.green)
+                        .animation(.smooth, value: syncing)
                         .frame(maxWidth: .infinity)
                         .multilineTextAlignment(.center)
                         .padding(.top, 2)
@@ -143,7 +150,7 @@ struct ContactDetailView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button("Edit") { editing = true }
+                Button("Edit") { editing = true }.disabled(syncing)
                 Menu {
                     Toggle(isOn: Binding(get: { muted }, set: { setMuted($0, contact) })) {
                         Label("Mute Reminders", systemImage: "bell.slash")

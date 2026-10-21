@@ -1,13 +1,27 @@
 import SwiftUI
 
+enum ContactSort: String, CaseIterable, Identifiable {
+    case name, recent
+    var id: String { rawValue }
+    var title: String { self == .name ? "Name" : "Recently Modified" }
+}
+
 struct ContactRow: View {
     @Environment(AppModel.self) private var model
     let contact: Contact
+    var showModified = false
 
     var body: some View {
         HStack(spacing: 12) {
             AvatarView(contact: contact, size: 40)
-            Text(contact.displayName)
+            if showModified, let modified = contact.modified {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(contact.displayName)
+                    Text(modified.formatted(.relative(presentation: .named))).font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Text(contact.displayName)
+            }
             Spacer(minLength: 0)
             if model.store.todayIDs.contains(contact.id) {
                 Image(systemName: "birthday.cake").foregroundStyle(.pink).imageScale(.small)
@@ -20,6 +34,7 @@ struct ContactRow: View {
 struct ContactsView: View {
     @Environment(AppModel.self) private var model
     @State private var showNew = false
+    @AppStorage("contacts.sort") private var sort = ContactSort.name
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     private var sections: [(letter: String, contacts: [Contact])] {
@@ -35,13 +50,19 @@ struct ContactsView: View {
         @Bindable var model = model
         NavigationSplitView {
             List(selection: $model.contactsSelection) {
-                ForEach(sections, id: \.letter) { section in
-                    Section(section.letter) {
-                        ForEach(section.contacts) { contact in
-                            ContactRow(contact: contact).tag(contact.id)
-                        }
+                if sort == .recent {
+                    ForEach(model.store.recentlyModified) { contact in
+                        ContactRow(contact: contact, showModified: true).tag(contact.id)
                     }
-                    .sectionIndexLabel(section.letter)
+                } else {
+                    ForEach(sections, id: \.letter) { section in
+                        Section(section.letter) {
+                            ForEach(section.contacts) { contact in
+                                ContactRow(contact: contact).tag(contact.id)
+                            }
+                        }
+                        .sectionIndexLabel(section.letter)
+                    }
                 }
                 Section {} footer: {
                     Text("\(model.store.contacts.count) Contacts").frame(maxWidth: .infinity)
@@ -50,7 +71,7 @@ struct ContactsView: View {
             .listStyle(.plain)
             .environment(\.defaultMinListHeaderHeight, 30)
             .listSectionSpacing(.compact)
-            .listSectionIndexVisibility(.visible)
+            .listSectionIndexVisibility(sort == .name ? .visible : .hidden)
             .navigationTitle("Contacts")
             .refreshable { await model.store.sync() }
             .toolbar {
@@ -66,6 +87,13 @@ struct ContactsView: View {
                         }
                         .symbolEffect(.rotate, isActive: model.store.isSyncing)
                     }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Sort By", selection: $sort) {
+                            ForEach(ContactSort.allCases) { Text($0.title).tag($0) }
+                        }
+                    } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showNew = true } label: { Label("New Contact", systemImage: "plus") }

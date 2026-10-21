@@ -9,12 +9,17 @@ final class ContactsStore {
     /// Demo overlay: signed in to Google, but showing sample contacts instead. Google is neither read nor written.
     private(set) var isDemoOverlay: Bool
     private(set) var isSyncing = false
+    /// Contacts whose edits are being sent to Google right now.
+    private(set) var syncingIDs: Set<String> = []
+    /// Bumps when the data source changes (demo on/off, sign in/out) so screens can drop stale selections.
+    private(set) var sourceVersion = 0
     private(set) var lastSynced: Date?
     var errorMessage: String?
 
     // What the UI shows. Rebuilt whenever the underlying data changes, so views never sort or scan per render.
     private(set) var contacts: [Contact] = []
     private(set) var sorted: [Contact] = []
+    private(set) var recentlyModified: [Contact] = []
     private(set) var todayIDs: Set<String> = []
     /// Bumps on every change; lets views cache derived data (like the events timeline).
     private(set) var revision = 0
@@ -52,7 +57,10 @@ final class ContactsStore {
         rebuild()
     }
 
-    func contact(id: String) -> Contact? { index[id] }
+    func contact(id: String) -> Contact? {
+        _ = revision // `index` isn't observed on its own; reading `revision` makes views refresh when a contact changes
+        return index[id]
+    }
 
     /// Contacts matching `query` by name, company, email or phone digits.
     func search(_ query: String) -> [Contact] {
@@ -124,7 +132,7 @@ final class ContactsStore {
     /// Automatic syncs (on launch / foreground) fail silently, retrying once, since the network is often
     /// still waking up; the cached contacts stay on screen. Syncs the user asks for report errors.
     func sync(userInitiated: Bool = true) async {
-        guard canSync, !isSyncing else { return }
+        guard canSync, !isSyncing, syncingIDs.isEmpty else { return }
         isSyncing = true
         defer { isSyncing = false }
         for attempt in 0..<(userInitiated ? 1 : 2) {
@@ -145,29 +153,42 @@ final class ContactsStore {
 
     // MARK: - Edit
 
-    /// Saves to Google (or locally when showing sample contacts) and returns the saved contact.
+    /// Saves and returns the contact. Edits to an existing Google contact apply on screen at once and are sent to
+    /// Google in the background (see `syncingIDs`); if Google rejects them, the previous version comes back.
     @discardableResult
     func save(_ contact: Contact, original: Contact? = nil) async throws -> Contact {
         var contact = contact
         contact.events = contact.events.map { var e = $0; e.date.clamp(); return e }
-        let saved: Contact
+        contact.modified = .now
         if isShowingSample {
             if contact.isNew { contact.id = "people/local-\(UUID().uuidString)" }
-            saved = contact
-            upsert(saved, into: &sampleContacts)
+            upsert(contact, into: &sampleContacts)
+        } else if contact.isNew {
+            contact = try await api.create(contact)
+            upsert(contact, into: &liveContacts)
         } else {
-            if contact.isNew {
-                saved = try await api.create(contact)
-            } else {
-                // Only the field groups that changed are sent, so data the app doesn't model survives the edit.
-                let fields = original.map { contact.changedGoogleFields(from: $0) } ?? PersonDTO.writeFields.split(separator: ",").map(String.init)
-                saved = try await api.update(contact, fields: fields)
+            let previous = index[contact.id]
+            // Only the field groups that changed are sent, so data the app doesn't model survives the edit.
+            let fields = original.map { contact.changedGoogleFields(from: $0) } ?? PersonDTO.writeFields.split(separator: ",").map(String.init)
+            upsert(contact, into: &liveContacts)
+            syncingIDs.insert(contact.id)
+            Task { [contact] in
+                do {
+                    var saved = try await api.update(contact, fields: fields)
+                    saved.modified = saved.modified ?? contact.modified
+                    upsert(saved, into: &liveContacts)
+                } catch {
+                    if let previous { upsert(previous, into: &liveContacts) }
+                    errorMessage = "Couldn't save \(contact.displayName) to Google. \(error.localizedDescription)"
+                }
+                syncingIDs.remove(contact.id)
+                rebuild()
+                persist()
             }
-            upsert(saved, into: &liveContacts)
         }
         rebuild()
         persist()
-        return saved
+        return contact
     }
 
     func delete(_ contact: Contact) async throws {
@@ -190,6 +211,7 @@ final class ContactsStore {
     private func rebuild() {
         contacts = isShowingSample ? sampleContacts : liveContacts
         sorted = contacts.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+        recentlyModified = sorted.sorted { ($0.modified ?? .distantPast) > ($1.modified ?? .distantPast) }
         index = Dictionary(contacts.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         searchKeys = Dictionary(contacts.map { ($0.id, Self.searchKey(for: $0)) }, uniquingKeysWith: { a, _ in a })
         todayIDs = Self.todayIDs(in: contacts)
@@ -225,11 +247,13 @@ final class ContactsStore {
 
     private func setMode(_ m: Mode) {
         mode = m
+        sourceVersion += 1
         defaults.set(m.rawValue, forKey: "store.mode")
     }
 
     private func setOverlayFlag(_ on: Bool) {
         isDemoOverlay = on
+        sourceVersion += 1
         defaults.set(on, forKey: "store.demoOverlay")
     }
 

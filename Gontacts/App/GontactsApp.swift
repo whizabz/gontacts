@@ -18,6 +18,7 @@ struct GontactsApp: App {
                         model.rescheduleReminders()
                     }
                 }
+                .onChange(of: model.store.sourceVersion) { _, _ in model.resetNavigation() }
                 .onChange(of: model.store.revision) { _, _ in
                     if model.hasOnboarded { model.rescheduleReminders() }
                 }

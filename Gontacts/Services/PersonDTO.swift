@@ -36,6 +36,10 @@ struct PersonDTO: Codable {
     struct Birthday: Codable { var date: DateDTO? }
     struct Event: Codable { var date: DateDTO?; var type: String?; var formattedType: String? }
     struct Photo: Codable { var url: String?; var `default`: Bool? }
+    struct Metadata: Codable {
+        struct Source: Codable { var type: String?; var updateTime: String? }
+        var sources: [Source]?
+    }
 
     var resourceName: String?
     var etag: String?
@@ -53,17 +57,27 @@ struct PersonDTO: Codable {
     var events: [Event]?
     var biographies: [Field]?
     var photos: [Photo]?
+    var metadata: Metadata?
 }
 
 extension PersonDTO {
-    static let readFields = "names,nicknames,phoneNumbers,emailAddresses,addresses,urls,relations,imClients,userDefined,organizations,birthdays,events,biographies,photos"
+    static let readFields = "names,nicknames,phoneNumbers,emailAddresses,addresses,urls,relations,imClients,userDefined,organizations,birthdays,events,biographies,photos,metadata"
     /// Used when creating a contact. Updates send only the groups that changed (`Contact.changedGoogleFields`).
     static let writeFields = "names,nicknames,phoneNumbers,emailAddresses,addresses,urls,relations,imClients,userDefined,organizations,birthdays,events,biographies"
+
+    private static func parseTime(_ s: String) -> Date? {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = f.date(from: s) { return d }
+        f.formatOptions = [.withInternetDateTime]
+        return f.date(from: s)
+    }
 
     func toContact() -> Contact? {
         guard let resourceName else { return nil }
         var c = Contact(id: resourceName)
         c.etag = etag
+        c.modified = metadata?.sources?.first { $0.type == "CONTACT" }?.updateTime.flatMap(Self.parseTime)
         if let n = names?.first {
             c.namePrefix = n.honorificPrefix ?? ""
             c.givenName = n.givenName ?? ""

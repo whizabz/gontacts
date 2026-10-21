@@ -100,6 +100,8 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
     var events: [ContactEvent] = []
     var notes = ""
     var photoURL: URL?
+    /// When the contact was last changed (Google's update time, or now after a local edit).
+    var modified: Date?
 
     // Fields added later; decode leniently so older cached data still loads.
     init(id: String) { self.id = id }
@@ -107,7 +109,7 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id, etag, namePrefix, givenName, middleName, familyName, nameSuffix, nickname, organization, jobTitle
         case phoneticGivenName, phoneticMiddleName, phoneticFamilyName, department, otherOrganizations
-        case phones, emails, addresses, urls, relations, ims, customFields, events, notes, photoURL
+        case phones, emails, addresses, urls, relations, ims, customFields, events, notes, photoURL, modified
     }
 
     init(from decoder: Decoder) throws {
@@ -137,6 +139,7 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
         events = try c.decodeIfPresent([ContactEvent].self, forKey: .events) ?? []
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
         photoURL = try c.decodeIfPresent(URL.self, forKey: .photoURL)
+        modified = try c.decodeIfPresent(Date.self, forKey: .modified)
     }
 
     static func blank() -> Contact { Contact(id: "new-\(UUID().uuidString)") }

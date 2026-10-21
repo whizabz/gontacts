@@ -13,6 +13,8 @@ final class AppModel {
     /// Bumped when the user taps the tab they are already on, so that screen can scroll back to its start.
     var tabReselected: [AppTab: Int] = [:]
     var contactsSelection: String?
+    /// Selected event occurrence id (contactID|event|time).
+    var eventsSelection: String?
     var showSearch = false
     /// Set when a notification asks to open the wish composer for a contact.
     var wishRequestID: String?
@@ -27,6 +29,14 @@ final class AppModel {
         AppDelegate.onNotification = { [weak self] contactID, wish in
             self?.open(contactID: contactID, wish: wish)
         }
+    }
+
+    /// Drops open contacts and sheets, e.g. when the contacts on screen are swapped (Demo Mode, sign in/out).
+    func resetNavigation() {
+        contactsSelection = nil
+        eventsSelection = nil
+        wishRequestID = nil
+        showSearch = false
     }
 
     func reselect(_ tab: AppTab) { tabReselected[tab, default: 0] += 1 }

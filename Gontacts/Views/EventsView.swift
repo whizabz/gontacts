@@ -2,7 +2,6 @@ import SwiftUI
 
 struct EventsView: View {
     @Environment(AppModel.self) private var model
-    @State private var selection: String?
     @State private var sections: [EventSection] = []
     /// Where the list is relative to "today". Only changes when it crosses a threshold, so scrolling doesn't re-render.
     @State private var relation: ScrollRelation = .atAnchor
@@ -37,11 +36,12 @@ struct EventsView: View {
     }
 
     var body: some View {
+        @Bindable var model = model
         let anchor = EventTimeline.anchorID(in: sections)
 
         NavigationSplitView {
             ScrollViewReader { proxy in
-                List(selection: $selection) {
+                List(selection: $model.eventsSelection) {
                     ForEach(sections) { section in
                         Section {
                             ForEach(section.occurrences) { o in
@@ -104,7 +104,7 @@ struct EventsView: View {
             }
         } detail: {
             NavigationStack {
-                if let selection {
+                if let selection = model.eventsSelection {
                     // List selection is the occurrence id ("contactID|event|time"); the contact id is its first part.
                     ContactDetailView(contactID: String(selection.prefix { $0 != "|" }))
                 } else {
