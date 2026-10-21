@@ -77,7 +77,7 @@ struct ContactsView: View {
             .toolbar {
                 if sizeClass == .regular {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button { model.showSearch = true } label: { Label("Search", systemImage: "magnifyingglass") }
+                        Button { model.tab = .search } label: { Label("Search", systemImage: "magnifyingglass") }
                     }
                 }
                 if model.store.canSync {

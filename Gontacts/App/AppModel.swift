@@ -2,7 +2,7 @@ import Observation
 import SwiftUI
 import UserNotifications
 
-enum AppTab: Hashable { case contacts, events, settings }
+enum AppTab: Hashable { case contacts, events, settings, search }
 
 @MainActor @Observable
 final class AppModel {
@@ -15,7 +15,6 @@ final class AppModel {
     var contactsSelection: String?
     /// Selected event occurrence id (contactID|event|time).
     var eventsSelection: String?
-    var showSearch = false
     /// Set when a notification asks to open the wish composer for a contact.
     var wishRequestID: String?
 
@@ -36,7 +35,6 @@ final class AppModel {
         contactsSelection = nil
         eventsSelection = nil
         wishRequestID = nil
-        showSearch = false
     }
 
     func reselect(_ tab: AppTab) { tabReselected[tab, default: 0] += 1 }
