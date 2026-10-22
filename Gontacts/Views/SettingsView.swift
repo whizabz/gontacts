@@ -166,39 +166,3 @@ struct MutedPeopleView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-
-struct WhyThisAppExistsView: View {
-    private var body1: Text {
-        Text("Gontacts is mainly for people who keep Google Contacts as the one place for all their contacts, and who use it to store important dates, like birthdays and anniversaries, to use later. Apple Contacts has trouble saving dates to Google Contacts, and that is the reason this app exists. Apple stores a birthday with no year as ")
-        + code("1604-11-26") + Text(" with an ") + code("X-APPLE-OMIT-YEAR=1604")
-        + Text(" flag. Google stores the same date as ") + code("--1126")
-        + Text(", which is vCard 4.0 shorthand inside a vCard 3.0 file. iOS can't parse that over CardDAV, so year-less birthdays vanish on the iPhone. Gontacts works with Google's own format, so those dates stay intact.")
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                Image(systemName: "calendar.badge.checkmark")
-                    .font(.system(size: 40)).foregroundStyle(.tint)
-                    .frame(width: 84, height: 84)
-                    .background(Color.accentColor.opacity(0.15), in: .rect(cornerRadius: 26))
-                Text("Why This App Exists").font(.title.bold()).multilineTextAlignment(.center)
-                body1
-                    .font(.body).lineSpacing(5)
-                    .padding(22)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 28))
-                    .padding(.top, 6)
-            }
-            .padding(.horizontal, 16).padding(.top, 12)
-            .frame(maxWidth: 640)
-            .frame(maxWidth: .infinity)
-        }
-        .background(Color(.systemGroupedBackground))
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private func code(_ s: String) -> Text {
-        Text(s).font(.system(.callout, design: .monospaced)).foregroundStyle(.secondary)
-    }
-}
