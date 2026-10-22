@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 
 struct ContactDetailView: View {
@@ -9,6 +10,9 @@ struct ContactDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var editing = false
     @State private var wishing = false
+    @State private var sharing = false
+    /// The vCard chosen on the Share Contact screen, opened in the iOS share sheet once that screen has closed.
+    @State private var pendingShare: URL?
     @State private var confirmDelete = false
     /// Bumped on every appearance so the confetti replays each time the contact is opened.
     @State private var confettiRun = 0
@@ -129,6 +133,7 @@ struct ContactDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .appEntityIdentifier(EntityIdentifier(for: ContactEntity.self, identifier: contact.id))
         .overlay(alignment: .top) {
             if !today.isEmpty && !reduceMotion && model.settings.confetti {
                 ConfettiView().id(confettiRun).frame(maxHeight: .infinity).ignoresSafeArea()
@@ -136,14 +141,27 @@ struct ContactDetailView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button("Edit") { editing = true }.disabled(syncing)
+                // Share is the main action (as a vCard, like iOS Contacts); Edit lives in the overflow menu.
+                Button { sharing = true } label: { Label("Share", systemImage: "square.and.arrow.up") }
                 Menu {
+                    Button("Edit", systemImage: "pencil") { editing = true }.disabled(syncing)
                     Toggle(isOn: Binding(get: { muted }, set: { setMuted($0, contact) })) {
                         Label("Mute Reminders", systemImage: "bell.slash")
+                    }
+                    if model.store.canSync {
+                        let isMine = model.store.myCard?.id == contact.id
+                        Button(isMine ? "Remove as My Card" : "Set as My Card", systemImage: "person.crop.circle") {
+                            model.store.setMyCard(isMine ? "" : contact.id)
+                        }
                     }
                     Button("Delete Contact", systemImage: "trash", role: .destructive) { confirmDelete = true }
                 } label: { Label("More", systemImage: "ellipsis") }
             }
+        }
+        .sheet(isPresented: $sharing, onDismiss: {
+            if let url = pendingShare { pendingShare = nil; ShareSheet.present(url) }
+        }) {
+            ShareContactView(contact: contact) { pendingShare = $0 }
         }
         .sheet(isPresented: $editing) { EditContactView(contact: contact) }
         .sheet(isPresented: $wishing) { WishView(contact: contact, occurrence: today.first) }

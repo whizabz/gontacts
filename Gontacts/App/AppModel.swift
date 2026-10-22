@@ -9,6 +9,7 @@ enum HomeMode: String, CaseIterable, Identifiable {
 
 @MainActor @Observable
 final class AppModel {
+    static weak var current: AppModel?
     let store = ContactsStore()
     let settings = ReminderSettings()
 
@@ -17,6 +18,9 @@ final class AppModel {
     var contactsSelection: String?
     /// Selected event occurrence id (contactID|event|time).
     var eventsSelection: String?
+    /// Set by the contact context menu; HomeView shows the Share Contact screen / delete confirmation.
+    var shareRequest: Contact?
+    var deleteRequest: Contact?
     /// Set when a notification asks to open the wish composer for a contact.
     var wishRequestID: String?
 
@@ -27,6 +31,8 @@ final class AppModel {
     init() {
         hasOnboarded = UserDefaults.standard.bool(forKey: "hasOnboarded") && store.isSignedIn
         ReminderScheduler.registerCategories()
+        AppModel.current = self
+        ContactDirectory.store = store
         AppDelegate.onNotification = { [weak self] contactID, wish in
             self?.open(contactID: contactID, wish: wish)
         }

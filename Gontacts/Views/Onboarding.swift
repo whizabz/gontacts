@@ -1,7 +1,7 @@
 import SwiftUI
 import UserNotifications
 
-enum OnboardingStep: Hashable { case connect, reminders }
+enum OnboardingStep: Hashable { case connect, myCard, reminders }
 
 struct OnboardingFlow: View {
     @Environment(AppModel.self) private var model
@@ -12,7 +12,8 @@ struct OnboardingFlow: View {
             WelcomeView { path.append(.connect) }
                 .navigationDestination(for: OnboardingStep.self) { step in
                     switch step {
-                    case .connect: ConnectView { path.append(.reminders) }
+                    case .connect: ConnectView { path.append(model.store.mode == .google ? .myCard : .reminders) }
+                    case .myCard: MyCardSetupView { path.append(.reminders) }
                     case .reminders: ReminderOptInView()
                     }
                 }

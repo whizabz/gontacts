@@ -140,3 +140,43 @@ final class PendingEditTests: XCTestCase {
         XCTAssertEqual(result.notes, "from Google")
     }
 }
+
+final class VCardTests: XCTestCase {
+    func testVCardEscapesAndKeepsYearlessBirthdayHonest() {
+        var c = Contact(id: "people/c1")
+        c.givenName = "Ada"
+        c.familyName = "Lovelace; Countess"
+        c.phones = [LabeledValue(label: "mobile", value: "+91 98765 43210")]
+        c.events = [ContactEvent(kind: .birthday, date: EventDate(month: 12, day: 13))]
+        let v = c.vCard
+        XCTAssertTrue(v.contains("N:Lovelace\\; Countess;Ada;;;"))
+        XCTAssertTrue(v.contains("TEL;TYPE=CELL:+91 98765 43210"))
+        XCTAssertTrue(v.contains("BDAY;X-APPLE-OMIT-YEAR=1604:1604-12-13"))
+        XCTAssertTrue(v.hasPrefix("BEGIN:VCARD") && v.contains("END:VCARD"))
+    }
+
+    func testVCardWithYearHasNoOmitYearFlag() {
+        var c = Contact(id: "people/c2")
+        c.givenName = "Grace"
+        c.events = [ContactEvent(kind: .birthday, date: EventDate(month: 12, day: 9, year: 1906))]
+        XCTAssertTrue(c.vCard.contains("BDAY:1906-12-09"))
+    }
+}
+
+final class ShareSelectionTests: XCTestCase {
+    func testKeepingOnlyTickedFields() {
+        var c = Contact(id: "people/c3")
+        c.givenName = "Ada"
+        c.organization = "Analytical Engines"
+        let phone = LabeledValue(label: "mobile", value: "111")
+        let email = LabeledValue(label: "work", value: "ada@example.com")
+        c.phones = [phone]
+        c.emails = [email]
+
+        let v = c.keeping([.name, .phone(phone.id)]).vCard
+        XCTAssertTrue(v.contains("TEL;TYPE=CELL:111"))
+        XCTAssertFalse(v.contains("ada@example.com"))
+        XCTAssertFalse(v.contains("ORG:"))
+        XCTAssertTrue(v.contains("N:;Ada;;;"))
+    }
+}

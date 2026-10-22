@@ -30,6 +30,8 @@ final class ContactsStore {
     private(set) var failures: [String: String] = [:]
     /// Bumps when the data source changes (demo on/off, sign in/out) so screens can drop stale selections.
     private(set) var sourceVersion = 0
+    /// The contact the user marked as theirs ("My Card"). Falls back to the contact with the account's email.
+    private(set) var myCardID: String? = UserDefaults.standard.string(forKey: "store.myCardID")
     private(set) var lastSynced: Date?
     var errorMessage: String?
 
@@ -82,6 +84,20 @@ final class ContactsStore {
             Task { @MainActor in await self?.flushPending() }
         }
         monitor.start(queue: .global(qos: .utility))
+    }
+
+    /// The user's own contact, shown pinned at the top of Contacts. Never for the sample contacts.
+    var myCard: Contact? {
+        _ = revision
+        guard !isShowingSample else { return nil }
+        if let id = myCardID, let c = index[id] { return c }
+        guard myCardID == nil, let email = accountEmail?.lowercased() else { return nil }
+        return contacts.first { $0.emails.contains { $0.value.lowercased() == email } }
+    }
+
+    func setMyCard(_ id: String?) {
+        myCardID = id
+        defaults.set(id, forKey: "store.myCardID")
     }
 
     func syncState(for id: String) -> ContactSyncState {
@@ -157,6 +173,7 @@ final class ContactsStore {
         lastSynced = nil
         pending = [:]
         failures = [:]
+        setMyCard(nil)
         savePending()
         try? FileManager.default.removeItem(at: cacheURL(for: .google))
         try? FileManager.default.removeItem(at: cacheURL(for: .demo))

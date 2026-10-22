@@ -37,7 +37,8 @@ struct ContactsList: View {
     @AppStorage("contacts.sort") private var sort = ContactSort.name
 
     private var sections: [(letter: String, contacts: [Contact])] {
-        let grouped = Dictionary(grouping: model.store.sorted, by: \.sectionLetter)
+        let cardID = model.store.myCard?.id
+        let grouped = Dictionary(grouping: model.store.sorted.filter { $0.id != cardID }, by: \.sectionLetter)
         return grouped.keys.sorted { a, b in
             if a == "#" { return false }
             if b == "#" { return true }
@@ -48,15 +49,18 @@ struct ContactsList: View {
     var body: some View {
         @Bindable var model = model
         List(selection: $model.contactsSelection) {
+            if let card = model.store.myCard {
+                MyCardRow(contact: card).tag(card.id).contactContextMenu(card)
+            }
             if sort == .recent {
-                ForEach(model.store.recentlyModified) { contact in
-                    ContactRow(contact: contact, showModified: true).tag(contact.id)
+                ForEach(model.store.recentlyModified.filter { $0.id != model.store.myCard?.id }) { contact in
+                    ContactRow(contact: contact, showModified: true).tag(contact.id).contactContextMenu(contact)
                 }
             } else {
                 ForEach(sections, id: \.letter) { section in
                     Section(section.letter) {
                         ForEach(section.contacts) { contact in
-                            ContactRow(contact: contact).tag(contact.id)
+                            ContactRow(contact: contact).tag(contact.id).contactContextMenu(contact)
                         }
                     }
                     .sectionIndexLabel(section.letter)
@@ -88,6 +92,22 @@ struct ContactsList: View {
     }
 }
 
+/// The user's own contact, first in the list, like My Card in iOS Contacts.
+struct MyCardRow: View {
+    let contact: Contact
+
+    var body: some View {
+        HStack(spacing: 12) {
+            AvatarView(contact: contact, size: 56)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(contact.displayName).font(.title3.weight(.semibold))
+                Text("My Card").font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
 /// Contacts matching the search text. Shown in place of whichever list is open, so search works from Events too.
 struct ContactSearchResults: View {
     @Environment(AppModel.self) private var model
@@ -97,7 +117,7 @@ struct ContactSearchResults: View {
         @Bindable var model = model
         let results = model.store.search(query)
         List(results, selection: $model.contactsSelection) { contact in
-            ContactRow(contact: contact).tag(contact.id)
+            ContactRow(contact: contact).tag(contact.id).contactContextMenu(contact)
         }
         .listStyle(.plain)
         .overlay {

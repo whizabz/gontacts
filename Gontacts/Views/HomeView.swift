@@ -7,6 +7,7 @@ struct HomeView: View {
     @State private var showSettings = false
     @State private var showNew = false
     @State private var query = ""
+    @State private var pendingShare: URL?
 
     var body: some View {
         @Bindable var model = model
@@ -63,6 +64,21 @@ struct HomeView: View {
                 }
             }
         }
+        .sheet(item: $model.shareRequest, onDismiss: {
+            if let url = pendingShare { pendingShare = nil; ShareSheet.present(url) }
+        }) { contact in
+            ShareContactView(contact: contact) { pendingShare = $0 }
+        }
+        .confirmationDialog("Delete this contact?", isPresented: Binding(get: { model.deleteRequest != nil }, set: { if !$0 { model.deleteRequest = nil } }), titleVisibility: .visible, presenting: model.deleteRequest) { contact in
+            Button("Delete \(contact.displayName)", role: .destructive) {
+                Task {
+                    do {
+                        try await model.store.delete(contact)
+                        if model.contactsSelection == contact.id { model.contactsSelection = nil }
+                    } catch { model.store.errorMessage = error.localizedDescription }
+                }
+            }
+        } message: { _ in Text("This also deletes it from Google Contacts.") }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showNew) {
             EditContactView(contact: .blank()) { saved in

@@ -114,6 +114,11 @@ extension SettingsView {
                             Text("\(model.store.pending.count) \(model.store.pending.count == 1 ? "change" : "changes")")
                         }
                     }
+                    NavigationLink {
+                        MyCardPicker()
+                    } label: {
+                        LabeledContent("My Card", value: model.store.myCard?.displayName ?? "None")
+                    }
                     Button("Sync Now") { Task { await model.store.flushPending(); await model.store.sync() } }
                         .disabled(model.store.isSyncing)
                 }
