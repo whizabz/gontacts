@@ -121,3 +121,22 @@ final class EventDateTests: XCTestCase {
         XCTAssertEqual(body.names?.first?.phoneticGivenName, "AY-da")
     }
 }
+
+final class PendingEditTests: XCTestCase {
+    func testApplyingOnlyTakesTheListedFieldGroups() {
+        var server = Contact(id: "people/c1")
+        server.givenName = "Ada"
+        server.phones = [LabeledValue(label: "mobile", value: "111")]
+        server.notes = "from Google"
+
+        var edited = server
+        edited.givenName = "Grace"
+        edited.phones = [LabeledValue(label: "mobile", value: "222")]
+        edited.notes = "edited"
+
+        let result = server.applying(fields: ["phoneNumbers"], from: edited)
+        XCTAssertEqual(result.phones.first?.value, "222")
+        XCTAssertEqual(result.givenName, "Ada")
+        XCTAssertEqual(result.notes, "from Google")
+    }
+}

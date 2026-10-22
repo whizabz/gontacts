@@ -1,5 +1,18 @@
 import Foundation
+import Network
 import Observation
+
+/// An edit to an existing Google contact that hasn't reached Google yet. Kept on disk until it has.
+struct PendingChange: Codable {
+    var contact: Contact
+    var fields: [String]
+}
+
+/// Where a contact stands with Google, for the status line on its screen.
+enum ContactSyncState: Equatable {
+    case synced, syncing, waiting
+    case failed(String)
+}
 
 @MainActor @Observable
 final class ContactsStore {
@@ -11,6 +24,10 @@ final class ContactsStore {
     private(set) var isSyncing = false
     /// Contacts whose edits are being sent to Google right now.
     private(set) var syncingIDs: Set<String> = []
+    /// Edits waiting to be sent (offline, interrupted, or being retried). Persisted.
+    private(set) var pending: [String: PendingChange] = [:]
+    /// Edits Google refused for a reason retrying won't fix; shown on the contact until retried.
+    private(set) var failures: [String: String] = [:]
     /// Bumps when the data source changes (demo on/off, sign in/out) so screens can drop stale selections.
     private(set) var sourceVersion = 0
     private(set) var lastSynced: Date?
@@ -32,6 +49,8 @@ final class ContactsStore {
     @ObservationIgnored private let auth: GoogleAuth
     @ObservationIgnored private let api: PeopleAPI
     @ObservationIgnored private let defaults = UserDefaults.standard
+    @ObservationIgnored private let monitor = NWPathMonitor()
+    @ObservationIgnored private var resolvingConflict = false
 
     var accountEmail: String? { mode == .google ? auth.email : nil }
     var isSignedIn: Bool { mode != .signedOut }
@@ -54,7 +73,21 @@ final class ContactsStore {
             sampleContacts = load(.demo)
             if sampleContacts.isEmpty { sampleContacts = SampleData.contacts() }
         }
+        pending = loadPending()
         rebuild()
+
+        // Retry waiting edits as soon as the network comes back.
+        monitor.pathUpdateHandler = { [weak self] path in
+            guard path.status == .satisfied else { return }
+            Task { @MainActor in await self?.flushPending() }
+        }
+        monitor.start(queue: .global(qos: .utility))
+    }
+
+    func syncState(for id: String) -> ContactSyncState {
+        if syncingIDs.contains(id) { return .syncing }
+        if let message = failures[id] { return .failed(message) }
+        return pending[id] != nil ? .waiting : .synced
     }
 
     func contact(id: String) -> Contact? {
@@ -122,6 +155,9 @@ final class ContactsStore {
         liveContacts = []
         sampleContacts = []
         lastSynced = nil
+        pending = [:]
+        failures = [:]
+        savePending()
         try? FileManager.default.removeItem(at: cacheURL(for: .google))
         try? FileManager.default.removeItem(at: cacheURL(for: .demo))
         rebuild()
@@ -137,12 +173,18 @@ final class ContactsStore {
         defer { isSyncing = false }
         for attempt in 0..<(userInitiated ? 1 : 2) {
             do {
-                liveContacts = try await api.listContacts()
+                liveContacts = try await api.listContacts().map { fetched in
+                    // Edits still waiting to be sent stay on screen, rebased on Google's latest version.
+                    guard let change = pending[fetched.id] else { return fetched }
+                    return fetched.applying(fields: change.fields, from: change.contact)
+                }
                 lastSynced = .now
                 defaults.set(lastSynced, forKey: "store.lastSynced")
                 rebuild()
                 persist()
                 errorMessage = nil
+                isSyncing = false
+                await flushPending()
                 return
             } catch {
                 if userInitiated { errorMessage = error.localizedDescription; return }
@@ -167,24 +209,14 @@ final class ContactsStore {
             contact = try await api.create(contact)
             upsert(contact, into: &liveContacts)
         } else {
-            let previous = index[contact.id]
             // Only the field groups that changed are sent, so data the app doesn't model survives the edit.
             let fields = original.map { contact.changedGoogleFields(from: $0) } ?? PersonDTO.writeFields.split(separator: ",").map(String.init)
             upsert(contact, into: &liveContacts)
-            syncingIDs.insert(contact.id)
-            Task { [contact] in
-                do {
-                    var saved = try await api.update(contact, fields: fields)
-                    saved.modified = saved.modified ?? contact.modified
-                    upsert(saved, into: &liveContacts)
-                } catch {
-                    if let previous { upsert(previous, into: &liveContacts) }
-                    errorMessage = "Couldn't save \(contact.displayName) to Google. \(error.localizedDescription)"
-                }
-                syncingIDs.remove(contact.id)
-                rebuild()
-                persist()
-            }
+            let merged = Set(pending[contact.id]?.fields ?? []).union(fields)
+            pending[contact.id] = PendingChange(contact: contact, fields: Array(merged))
+            failures[contact.id] = nil
+            savePending()
+            Task { await flushPending() }
         }
         rebuild()
         persist()
@@ -200,6 +232,85 @@ final class ContactsStore {
         }
         rebuild()
         persist()
+    }
+
+    // MARK: - Pending edits
+
+    /// Sends waiting edits to Google. Offline or interrupted edits stay queued and are retried quietly (when the
+    /// app opens, when the network returns, or when the user taps retry); nothing here raises an alert.
+    func flushPending() async {
+        guard canSync, !isSyncing, !pending.isEmpty else { return }
+        var conflicted = false
+        var editedAgain = false
+        for id in Array(pending.keys) where !syncingIDs.contains(id) {
+            guard let change = pending[id] else { continue }
+            syncingIDs.insert(id)
+            failures[id] = nil
+            do {
+                var saved = try await api.update(change.contact, fields: change.fields)
+                saved.modified = saved.modified ?? change.contact.modified
+                // Keep anything edited again while this was in flight.
+                if let newer = pending[id], newer.fields != change.fields || newer.contact != change.contact {
+                    pending[id] = PendingChange(contact: newer.contact, fields: newer.fields)
+                    editedAgain = true
+                    upsert(newer.contact, into: &liveContacts)
+                } else {
+                    pending[id] = nil
+                    upsert(saved, into: &liveContacts)
+                }
+            } catch APIError.conflict {
+                if resolvingConflict { failures[id] = APIError.conflict.localizedDescription } else { conflicted = true }
+            } catch {
+                if Self.isTransient(error) {
+                    // Stays queued as "waiting".
+                } else {
+                    failures[id] = error.localizedDescription
+                }
+            }
+            syncingIDs.remove(id)
+        }
+        savePending()
+        rebuild()
+        persist()
+        if conflicted {
+            // Google's copy changed since we last looked: fetch it, rebase the edit on it, and send again.
+            resolvingConflict = true
+            await sync(userInitiated: false)
+            resolvingConflict = false
+        } else if editedAgain {
+            await flushPending()
+        }
+    }
+
+    /// Tap-to-retry on a contact that failed.
+    func retry(_ id: String) async {
+        failures[id] = nil
+        await flushPending()
+    }
+
+    private static func isTransient(_ error: Error) -> Bool {
+        if error is URLError { return true }
+        if case APIError.http(let code, _) = error { return code == 429 || code >= 500 }
+        return false
+    }
+
+    private func pendingURL() -> URL {
+        let dir = URL.applicationSupportDirectory
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appending(path: "pending-edits.json")
+    }
+
+    private func loadPending() -> [String: PendingChange] {
+        guard mode == .google, let data = try? Data(contentsOf: pendingURL()) else { return [:] }
+        return (try? JSONDecoder().decode([String: PendingChange].self, from: data)) ?? [:]
+    }
+
+    private func savePending() {
+        if pending.isEmpty {
+            try? FileManager.default.removeItem(at: pendingURL())
+        } else if let data = try? JSONEncoder().encode(pending) {
+            try? data.write(to: pendingURL(), options: .atomic)
+        }
     }
 
     private func upsert(_ c: Contact, into list: inout [Contact]) {

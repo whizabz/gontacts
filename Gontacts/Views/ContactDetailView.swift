@@ -24,7 +24,7 @@ struct ContactDetailView: View {
     private func content(_ contact: Contact) -> some View {
         let today = EventTimeline.events(on: .now, for: contact)
         let muted = model.settings.mutedIDs.contains(contact.id)
-        let syncing = model.store.syncingIDs.contains(contact.id)
+        let syncing = model.store.syncState(for: contact.id) == .syncing
 
         return List {
             Section {
@@ -34,21 +34,7 @@ struct ContactDetailView: View {
                     if !contact.nickname.isEmpty { Text("“\(contact.nickname)”").foregroundStyle(.secondary) }
                     if !contact.subtitle.isEmpty { Text(contact.subtitle).foregroundStyle(.secondary) }
                     if model.store.canSync {
-                        HStack(spacing: 4) {
-                            if syncing {
-                                ProgressView().controlSize(.mini)
-                                Text("Syncing with Google…")
-                            } else {
-                                Image(systemName: "checkmark").imageScale(.small)
-                                Text("Synced with Google")
-                            }
-                        }
-                        .font(.caption)
-                        .foregroundStyle(syncing ? Color.secondary : Color.green)
-                        .animation(.smooth, value: syncing)
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 2)
+                        syncStatus(contact)
                     }
                     actionButtons(contact).padding(.top, 12)
                 }
@@ -181,6 +167,34 @@ struct ContactDetailView: View {
         }
     }
 
+    /// One quiet line under the name: synced, syncing, waiting (offline / interrupted) or needs a retry.
+    @ViewBuilder
+    private func syncStatus(_ contact: Contact) -> some View {
+        let state = model.store.syncState(for: contact.id)
+        Group {
+            switch state {
+            case .synced:
+                Label("Synced with Google", systemImage: "checkmark").foregroundStyle(.green)
+            case .syncing:
+                HStack(spacing: 4) { ProgressView().controlSize(.mini); Text("Syncing with Google…") }.foregroundStyle(.secondary)
+            case .waiting:
+                Label("Waiting to sync", systemImage: "arrow.triangle.2.circlepath").foregroundStyle(.orange)
+            case .failed:
+                Button { Task { await model.store.retry(contact.id) } } label: {
+                    Label("Couldn't sync · Tap to retry", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.orange)
+            }
+        }
+        .font(.caption)
+        .labelStyle(CompactLabelStyle())
+        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.center)
+        .padding(.top, 2)
+        .animation(.smooth, value: state)
+    }
+
     private func actionButtons(_ contact: Contact) -> some View {
         GlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
@@ -242,4 +256,13 @@ struct ContactDetailView: View {
     }
 
     static func digits(_ s: String) -> String { s.filter { $0.isNumber || $0 == "+" } }
+}
+
+private struct CompactLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) {
+            configuration.icon.imageScale(.small)
+            configuration.title
+        }
+    }
 }

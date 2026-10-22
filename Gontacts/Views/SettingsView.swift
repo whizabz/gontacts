@@ -107,7 +107,12 @@ extension SettingsView {
                             Text("Never")
                         }
                     }
-                    Button("Sync Now") { Task { await model.store.sync() } }
+                    if !model.store.pending.isEmpty {
+                        LabeledContent("Waiting to sync") {
+                            Text("\(model.store.pending.count) \(model.store.pending.count == 1 ? "change" : "changes")")
+                        }
+                    }
+                    Button("Sync Now") { Task { await model.store.flushPending(); await model.store.sync() } }
                         .disabled(model.store.isSyncing)
                 }
                 Toggle("Demo Mode", isOn: Binding(

@@ -201,4 +201,35 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
         if notes != original.notes { fields.append("biographies") }
         return fields
     }
+
+    /// A copy of `self` with only the given People API field groups taken from `edited`.
+    func applying(fields: [String], from edited: Contact) -> Contact {
+        var c = self
+        for f in fields {
+            switch f {
+            case "names":
+                c.namePrefix = edited.namePrefix; c.givenName = edited.givenName; c.middleName = edited.middleName
+                c.familyName = edited.familyName; c.nameSuffix = edited.nameSuffix
+                c.phoneticGivenName = edited.phoneticGivenName; c.phoneticMiddleName = edited.phoneticMiddleName
+                c.phoneticFamilyName = edited.phoneticFamilyName
+            case "nicknames": c.nickname = edited.nickname
+            case "organizations":
+                c.organization = edited.organization; c.department = edited.department; c.jobTitle = edited.jobTitle
+                c.otherOrganizations = edited.otherOrganizations
+            case "phoneNumbers": c.phones = edited.phones
+            case "emailAddresses": c.emails = edited.emails
+            case "addresses": c.addresses = edited.addresses
+            case "urls": c.urls = edited.urls
+            case "relations": c.relations = edited.relations
+            case "imClients": c.ims = edited.ims
+            case "userDefined": c.customFields = edited.customFields
+            case "birthdays": c.events = c.events.filter { $0.kind != .birthday } + edited.events.filter { $0.kind == .birthday }
+            case "events": c.events = c.events.filter { $0.kind == .birthday } + edited.events.filter { $0.kind != .birthday }
+            case "biographies": c.notes = edited.notes
+            default: break
+            }
+        }
+        c.modified = edited.modified
+        return c
+    }
 }
