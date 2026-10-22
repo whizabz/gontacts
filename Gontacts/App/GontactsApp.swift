@@ -53,7 +53,6 @@ struct MainTabs: View {
             Tab("Contacts", systemImage: "person.2", value: AppTab.contacts) { ContactsView() }
             Tab("Events", systemImage: "calendar", value: AppTab.events) { EventsView() }
             Tab("Settings", systemImage: "slider.horizontal.3", value: AppTab.settings) { SettingsView() }
-            Tab("Search", systemImage: "magnifyingglass", value: AppTab.search, role: .search) { SearchScreen() }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
     }

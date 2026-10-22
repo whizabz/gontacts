@@ -35,7 +35,7 @@ struct ContactsView: View {
     @Environment(AppModel.self) private var model
     @State private var showNew = false
     @AppStorage("contacts.sort") private var sort = ContactSort.name
-    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var query = ""
 
     private var sections: [(letter: String, contacts: [Contact])] {
         let grouped = Dictionary(grouping: model.store.sorted, by: \.sectionLetter)
@@ -50,7 +50,11 @@ struct ContactsView: View {
         @Bindable var model = model
         NavigationSplitView {
             List(selection: $model.contactsSelection) {
-                if sort == .recent {
+                if !query.isEmpty {
+                    ForEach(model.store.search(query)) { contact in
+                        ContactRow(contact: contact).tag(contact.id)
+                    }
+                } else if sort == .recent {
                     ForEach(model.store.recentlyModified) { contact in
                         ContactRow(contact: contact, showModified: true).tag(contact.id)
                     }
@@ -64,30 +68,19 @@ struct ContactsView: View {
                         .sectionIndexLabel(section.letter)
                     }
                 }
-                Section {} footer: {
-                    Text("\(model.store.contacts.count) Contacts").frame(maxWidth: .infinity)
+                if query.isEmpty {
+                    Section {} footer: {
+                        Text("\(model.store.contacts.count) Contacts").frame(maxWidth: .infinity)
+                    }
                 }
             }
             .listStyle(.plain)
             .environment(\.defaultMinListHeaderHeight, 30)
             .listSectionSpacing(.compact)
-            .listSectionIndexVisibility(sort == .name ? .visible : .hidden)
+            .listSectionIndexVisibility(sort == .name && query.isEmpty ? .visible : .hidden)
             .navigationTitle("Contacts")
             .refreshable { await model.store.sync() }
             .toolbar {
-                if sizeClass == .regular {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { model.tab = .search } label: { Label("Search", systemImage: "magnifyingglass") }
-                    }
-                }
-                if model.store.canSync {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { Task { await model.store.sync() } } label: {
-                            Label("Sync", systemImage: "arrow.triangle.2.circlepath")
-                        }
-                        .symbolEffect(.rotate, isActive: model.store.isSyncing)
-                    }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Picker("Sort By", selection: $sort) {
@@ -99,8 +92,15 @@ struct ContactsView: View {
                     Button { showNew = true } label: { Label("New Contact", systemImage: "plus") }
                 }
             }
+            // Search is an icon in the toolbar that expands into a field; results filter this list in place.
+            .searchable(text: $query, prompt: "Search contacts")
+            .searchToolbarBehavior(.minimize)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
             .overlay {
-                if model.store.contacts.isEmpty {
+                if !query.isEmpty && model.store.search(query).isEmpty {
+                    ContentUnavailableView.search(text: query)
+                } else if model.store.contacts.isEmpty {
                     ContentUnavailableView("No Contacts", systemImage: "person.2", description: Text("Pull down to sync, or tap + to add one."))
                 }
             }

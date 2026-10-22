@@ -2,7 +2,7 @@ import Observation
 import SwiftUI
 import UserNotifications
 
-enum AppTab: Hashable { case contacts, events, settings, search }
+enum AppTab: Hashable { case contacts, events, settings }
 
 @MainActor @Observable
 final class AppModel {
