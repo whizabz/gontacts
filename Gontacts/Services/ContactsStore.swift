@@ -74,6 +74,7 @@ final class ContactsStore {
         if isShowingSample {
             sampleContacts = load(.demo)
             if sampleContacts.isEmpty { sampleContacts = SampleData.contacts() }
+            sampleContacts = SampleData.refreshed(sampleContacts)
         }
         pending = loadPending()
         rebuild()
@@ -124,6 +125,16 @@ final class ContactsStore {
 
     /// Re-evaluates "who has an event today", e.g. after midnight.
     func refreshToday() {
+        if isShowingSample {
+            // The sample dates are relative to today, so move them along when the day changes.
+            let moved = SampleData.refreshed(sampleContacts)
+            if moved != sampleContacts {
+                sampleContacts = moved
+                rebuild()
+                persist()
+                return
+            }
+        }
         let t = Self.todayIDs(in: contacts)
         if t != todayIDs { todayIDs = t }
     }
@@ -159,6 +170,7 @@ final class ContactsStore {
         guard mode == .google, on != isDemoOverlay else { return }
         if on, sampleContacts.isEmpty { sampleContacts = load(.demo) }
         if on, sampleContacts.isEmpty { sampleContacts = SampleData.contacts() }
+        if on { sampleContacts = SampleData.refreshed(sampleContacts) }
         setOverlayFlag(on)
         rebuild()
         persist()

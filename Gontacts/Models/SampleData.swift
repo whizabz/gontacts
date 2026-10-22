@@ -46,4 +46,19 @@ enum SampleData {
             person("Marcus", "Webb", org: "Webb & Sons", phone: "+1 415 555 0113"),
         ]
     }
+
+    /// Sample contacts that were saved on an earlier day, with every sample date moved back to "today" terms: Hana
+    /// Ito's birthday is today, the others fall around it. Names, numbers and contacts you added are left alone, and
+    /// sample contacts you deleted stay deleted, except Hana, who is always there so the birthday can be demoed.
+    static func refreshed(_ saved: [Contact], today: Date = .now, calendar: Calendar = .current) -> [Contact] {
+        let fresh = Dictionary(uniqueKeysWithValues: contacts(today: today, calendar: calendar).map { ($0.id, $0) })
+        var result = saved.map { c -> Contact in
+            guard let f = fresh[c.id] else { return c }
+            var updated = c
+            updated.events = f.events
+            return updated
+        }
+        if let hana = fresh["people/sample-hana-ito"], !result.contains(where: { $0.id == hana.id }) { result.append(hana) }
+        return result
+    }
 }

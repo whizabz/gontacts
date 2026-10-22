@@ -213,3 +213,28 @@ final class QRCodeTests: XCTestCase {
         XCTAssertEqual(message, c.vCard)
     }
 }
+
+final class SampleDataTests: XCTestCase {
+    func testHanasBirthdayIsAlwaysToday() throws {
+        let cal = Calendar.current
+        // Contacts saved ten days ago...
+        let saved = SampleData.contacts(today: cal.date(byAdding: .day, value: -10, to: .now)!)
+        // ...are moved so Hana's birthday falls today again.
+        let refreshed = SampleData.refreshed(saved)
+        let hana = try XCTUnwrap(refreshed.first { $0.id == "people/sample-hana-ito" })
+        let today = EventTimeline.events(on: .now, for: hana)
+        XCTAssertTrue(today.contains { $0.event.kind == .birthday })
+    }
+
+    func testRefreshKeepsDeletionsAndCreationsButRestoresHana() {
+        var saved = SampleData.contacts()
+        saved.removeAll { $0.id == "people/sample-hana-ito" || $0.id == "people/sample-ben-okafor" }
+        var mine = Contact(id: "people/mine"); mine.givenName = "Me"
+        saved.append(mine)
+
+        let refreshed = SampleData.refreshed(saved)
+        XCTAssertTrue(refreshed.contains { $0.id == "people/sample-hana-ito" })
+        XCTAssertFalse(refreshed.contains { $0.id == "people/sample-ben-okafor" })
+        XCTAssertTrue(refreshed.contains { $0.id == "people/mine" })
+    }
+}
