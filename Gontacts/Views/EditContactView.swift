@@ -250,29 +250,63 @@ struct EventEditorRow: View {
 struct DateWheels: View {
     @Binding var date: EventDate
 
+    enum Part { case day, month, year }
+
     private static let years = Array(1900...Calendar.current.component(.year, from: .now))
+
+    /// The order a date is written in for `locale`: day, month, year in India or the UK; month, day, year in the US.
+    /// The same order the date label above the wheels uses, so the two always agree.
+    static func order(for locale: Locale = .current) -> [Part] {
+        let pattern = DateFormatter.dateFormat(fromTemplate: "yMMMMd", options: 0, locale: locale) ?? "d MMMM y"
+        // Ignore quoted literal text such as 'de'.
+        var inQuote = false
+        var found: [(Part, Int)] = []
+        for (i, ch) in pattern.enumerated() {
+            if ch == "'" { inQuote.toggle(); continue }
+            guard !inQuote else { continue }
+            let part: Part? = switch ch {
+            case "d": .day
+            case "M", "L": .month
+            case "y", "Y", "u": .year
+            default: nil
+            }
+            if let part, !found.contains(where: { $0.0 == part }) { found.append((part, i)) }
+        }
+        let ordered = found.sorted { $0.1 < $1.1 }.map(\.0)
+        return ordered.count == 3 ? ordered : [.day, .month, .year]
+    }
 
     var body: some View {
         HStack(spacing: 0) {
-            Picker("Month", selection: Binding(get: { date.month }, set: { date.month = $0; date.clamp() })) {
-                ForEach(1...12, id: \.self) { Text(Calendar.current.monthSymbols[$0 - 1]).tag($0) }
+            ForEach(Self.order().filter { $0 != .year || date.hasYear }, id: \.self) { part in
+                wheel(part)
             }
-            .pickerStyle(.wheel)
+        }
+        .labelsHidden()
+        .frame(height: 130)
+    }
+
+    @ViewBuilder
+    private func wheel(_ part: Part) -> some View {
+        switch part {
+        case .day:
             Picker("Day", selection: $date.day) {
                 ForEach(1...date.daysInMonth(), id: \.self) { Text("\($0)").tag($0) }
             }
             .pickerStyle(.wheel)
             .frame(maxWidth: 80)
-            if date.hasYear {
-                Picker("Year", selection: Binding(get: { date.year ?? 2000 }, set: { date.year = $0; date.clamp() })) {
-                    ForEach(Self.years, id: \.self) { Text(String($0)).tag($0) }
-                }
-                .pickerStyle(.wheel)
-                .frame(maxWidth: 100)
+        case .month:
+            Picker("Month", selection: Binding(get: { date.month }, set: { date.month = $0; date.clamp() })) {
+                ForEach(1...12, id: \.self) { Text(Calendar.current.monthSymbols[$0 - 1]).tag($0) }
             }
+            .pickerStyle(.wheel)
+        case .year:
+            Picker("Year", selection: Binding(get: { date.year ?? 2000 }, set: { date.year = $0; date.clamp() })) {
+                ForEach(Self.years, id: \.self) { Text(String($0)).tag($0) }
+            }
+            .pickerStyle(.wheel)
+            .frame(maxWidth: 100)
         }
-        .labelsHidden()
-        .frame(height: 130)
     }
 }
 

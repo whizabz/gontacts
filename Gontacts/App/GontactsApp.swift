@@ -10,6 +10,10 @@ struct GontactsApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
+                .onOpenURL { url in
+                    // Widgets open the app on a contact.
+                    if let id = WidgetStore.contactID(from: url) { model.open(contactID: id, wish: false) }
+                }
                 .onChange(of: scenePhase) { _, phase in
                     guard phase == .active, model.hasOnboarded else { return }
                     model.store.refreshToday()

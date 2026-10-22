@@ -180,3 +180,36 @@ final class ShareSelectionTests: XCTestCase {
         XCTAssertTrue(v.contains("N:;Ada;;;"))
     }
 }
+
+final class DateWheelOrderTests: XCTestCase {
+    func testWheelsFollowTheRegionsDateOrder() {
+        XCTAssertEqual(DateWheels.order(for: Locale(identifier: "en_IN")), [.day, .month, .year])
+        XCTAssertEqual(DateWheels.order(for: Locale(identifier: "en_GB")), [.day, .month, .year])
+        XCTAssertEqual(DateWheels.order(for: Locale(identifier: "en_US")), [.month, .day, .year])
+        XCTAssertEqual(DateWheels.order(for: Locale(identifier: "ja_JP")), [.year, .month, .day])
+    }
+}
+
+final class QRCodeTests: XCTestCase {
+    func testSmallContactMakesAQRCodeAndHugeOneDoesNot() {
+        var c = Contact(id: "people/c9")
+        c.givenName = "Ada"
+        c.phones = [LabeledValue(label: "mobile", value: "+91 98765 43210")]
+        XCTAssertNotNil(ContactQRView.makeImage(from: c.vCard))
+
+        c.notes = String(repeating: "x", count: 4_000)
+        XCTAssertNil(ContactQRView.makeImage(from: c.vCard))
+    }
+
+    func testQRCodeDecodesBackToTheVCard() throws {
+        var c = Contact(id: "people/c10")
+        c.givenName = "Grace"
+        c.familyName = "Hopper"
+        c.emails = [LabeledValue(label: "work", value: "grace@example.com")]
+        let image = try XCTUnwrap(ContactQRView.makeImage(from: c.vCard))
+        let ci = try XCTUnwrap(CIImage(image: image))
+        let detector = try XCTUnwrap(CIDetector(ofType: CIDetectorTypeQRCode, context: nil, options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]))
+        let message = (detector.features(in: ci).first as? CIQRCodeFeature)?.messageString
+        XCTAssertEqual(message, c.vCard)
+    }
+}

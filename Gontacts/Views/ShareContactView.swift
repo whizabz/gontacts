@@ -10,6 +10,7 @@ struct ShareContactView: View {
     let onShare: (URL) -> Void
 
     @State private var chosen: Set<ShareField>
+    @State private var showQR = false
 
     init(contact: Contact, onShare: @escaping (URL) -> Void) {
         self.contact = contact
@@ -71,6 +72,7 @@ struct ShareContactView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Share Contact")
+            .navigationDestination(isPresented: $showQR) { ContactQRView(contact: contact.keeping(chosen)) }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(role: .cancel) { dismiss() } }
@@ -81,6 +83,11 @@ struct ShareContactView: View {
                     Button(chosen == allFields ? "Deselect All Fields" : "Select All Fields") {
                         chosen = chosen == allFields ? [] : allFields
                     }
+                }
+                ToolbarSpacer(.flexible, placement: .bottomBar)
+                ToolbarItem(placement: .bottomBar) {
+                    Button { showQR = true } label: { Label("Share as QR Code", systemImage: "qrcode") }
+                        .disabled(chosen.isEmpty)
                 }
             }
         }

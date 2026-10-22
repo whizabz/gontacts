@@ -178,6 +178,7 @@ final class ContactsStore {
         try? FileManager.default.removeItem(at: cacheURL(for: .google))
         try? FileManager.default.removeItem(at: cacheURL(for: .demo))
         rebuild()
+        WidgetPublisher.publish(contacts)
     }
 
     // MARK: - Sync
@@ -397,6 +398,7 @@ final class ContactsStore {
     }
 
     private func persist() {
+        WidgetPublisher.publish(contacts)
         if mode == .google, let data = try? JSONEncoder().encode(liveContacts) {
             try? data.write(to: cacheURL(for: .google), options: .atomic)
         }
