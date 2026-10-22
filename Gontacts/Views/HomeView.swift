@@ -5,16 +5,26 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var showSettings = false
+    @State private var showNew = false
+    @State private var query = ""
 
     var body: some View {
         @Bindable var model = model
         NavigationSplitView {
             Group {
-                switch model.homeMode {
-                case .contacts: ContactsList()
-                case .events: EventsList()
+                if !query.isEmpty {
+                    ContactSearchResults(query: query)
+                } else {
+                    switch model.homeMode {
+                    case .contacts: ContactsList()
+                    case .events: EventsList()
+                    }
                 }
             }
+            // Search and add live here, not in either list, so they stay put on both Contacts and Events.
+            .searchable(text: $query, prompt: "Search")
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
@@ -22,15 +32,21 @@ struct HomeView: View {
                         ForEach(HomeMode.allCases) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    .frame(maxWidth: 220)
+                    .frame(minWidth: 250, maxWidth: 320)
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showSettings = true } label: { Label("Settings", systemImage: "gearshape") }
                 }
+                // As in iOS Contacts: the search field in the bottom bar with the add button beside it.
+                DefaultToolbarItem(kind: .search, placement: .bottomBar)
+                ToolbarSpacer(.fixed, placement: .bottomBar)
+                ToolbarItem(placement: .bottomBar) {
+                    Button { showNew = true } label: { Label("New Contact", systemImage: "plus") }
+                }
             }
         } detail: {
             NavigationStack {
-                switch model.homeMode {
+                switch (query.isEmpty ? model.homeMode : .contacts) {
                 case .contacts:
                     if let id = model.contactsSelection {
                         ContactDetailView(contactID: id)
@@ -48,5 +64,11 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showNew) {
+            EditContactView(contact: .blank()) { saved in
+                model.homeMode = .contacts
+                model.contactsSelection = saved.id
+            }
+        }
     }
 }

@@ -34,9 +34,7 @@ struct ContactRow: View {
 /// The Contacts list: A–Z sections, sort, and the system bottom search bar with an add button, like iOS Contacts.
 struct ContactsList: View {
     @Environment(AppModel.self) private var model
-    @State private var showNew = false
     @AppStorage("contacts.sort") private var sort = ContactSort.name
-    @State private var query = ""
 
     private var sections: [(letter: String, contacts: [Contact])] {
         let grouped = Dictionary(grouping: model.store.sorted, by: \.sectionLetter)
@@ -50,11 +48,7 @@ struct ContactsList: View {
     var body: some View {
         @Bindable var model = model
         List(selection: $model.contactsSelection) {
-            if !query.isEmpty {
-                ForEach(model.store.search(query)) { contact in
-                    ContactRow(contact: contact).tag(contact.id)
-                }
-            } else if sort == .recent {
+            if sort == .recent {
                 ForEach(model.store.recentlyModified) { contact in
                     ContactRow(contact: contact, showModified: true).tag(contact.id)
                 }
@@ -68,20 +62,15 @@ struct ContactsList: View {
                     .sectionIndexLabel(section.letter)
                 }
             }
-            if query.isEmpty {
-                Section {} footer: {
-                    Text("\(model.store.contacts.count) Contacts").frame(maxWidth: .infinity)
-                }
+            Section {} footer: {
+                Text("\(model.store.contacts.count) Contacts").frame(maxWidth: .infinity)
             }
         }
         .listStyle(.plain)
         .environment(\.defaultMinListHeaderHeight, 30)
         .listSectionSpacing(.compact)
-        .listSectionIndexVisibility(sort == .name && query.isEmpty ? .visible : .hidden)
+        .listSectionIndexVisibility(sort == .name ? .visible : .hidden)
         .refreshable { await model.store.sync() }
-        .searchable(text: $query, prompt: "Search")
-        .autocorrectionDisabled()
-        .textInputAutocapitalization(.never)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -90,22 +79,29 @@ struct ContactsList: View {
                     }
                 } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
             }
-            // The search field sits in the bottom bar with the add button beside it (as in iOS Contacts).
-            DefaultToolbarItem(kind: .search, placement: .bottomBar)
-            ToolbarSpacer(.fixed, placement: .bottomBar)
-            ToolbarItem(placement: .bottomBar) {
-                Button { showNew = true } label: { Label("New Contact", systemImage: "plus") }
-            }
         }
         .overlay {
-            if !query.isEmpty && model.store.search(query).isEmpty {
-                ContentUnavailableView.search(text: query)
-            } else if model.store.contacts.isEmpty {
+            if model.store.contacts.isEmpty {
                 ContentUnavailableView("No Contacts", systemImage: "person.2", description: Text("Pull down to sync, or tap + to add one."))
             }
         }
-        .sheet(isPresented: $showNew) {
-            EditContactView(contact: .blank()) { saved in model.contactsSelection = saved.id }
+    }
+}
+
+/// Contacts matching the search text. Shown in place of whichever list is open, so search works from Events too.
+struct ContactSearchResults: View {
+    @Environment(AppModel.self) private var model
+    let query: String
+
+    var body: some View {
+        @Bindable var model = model
+        let results = model.store.search(query)
+        List(results, selection: $model.contactsSelection) { contact in
+            ContactRow(contact: contact).tag(contact.id)
+        }
+        .listStyle(.plain)
+        .overlay {
+            if results.isEmpty { ContentUnavailableView.search(text: query) }
         }
     }
 }
