@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @State private var authStatus: UNAuthorizationStatus = .notDetermined
     @State private var confirmSignOut = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         @Bindable var settings = model.settings
@@ -54,6 +55,7 @@ struct SettingsView: View {
                 accountSection
             }
             .navigationTitle("Settings")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .confirmationDialog("Sign out of Gontacts?", isPresented: $confirmSignOut, titleVisibility: .visible) {
                 Button("Sign Out", role: .destructive) {
                     model.store.signOut()

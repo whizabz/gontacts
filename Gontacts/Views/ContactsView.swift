@@ -31,7 +31,8 @@ struct ContactRow: View {
     }
 }
 
-struct ContactsView: View {
+/// The Contacts list: A–Z sections, sort, and the system bottom search bar with an add button, like iOS Contacts.
+struct ContactsList: View {
     @Environment(AppModel.self) private var model
     @State private var showNew = false
     @AppStorage("contacts.sort") private var sort = ContactSort.name
@@ -48,69 +49,59 @@ struct ContactsView: View {
 
     var body: some View {
         @Bindable var model = model
-        NavigationSplitView {
-            List(selection: $model.contactsSelection) {
-                if !query.isEmpty {
-                    ForEach(model.store.search(query)) { contact in
-                        ContactRow(contact: contact).tag(contact.id)
-                    }
-                } else if sort == .recent {
-                    ForEach(model.store.recentlyModified) { contact in
-                        ContactRow(contact: contact, showModified: true).tag(contact.id)
-                    }
-                } else {
-                    ForEach(sections, id: \.letter) { section in
-                        Section(section.letter) {
-                            ForEach(section.contacts) { contact in
-                                ContactRow(contact: contact).tag(contact.id)
-                            }
+        List(selection: $model.contactsSelection) {
+            if !query.isEmpty {
+                ForEach(model.store.search(query)) { contact in
+                    ContactRow(contact: contact).tag(contact.id)
+                }
+            } else if sort == .recent {
+                ForEach(model.store.recentlyModified) { contact in
+                    ContactRow(contact: contact, showModified: true).tag(contact.id)
+                }
+            } else {
+                ForEach(sections, id: \.letter) { section in
+                    Section(section.letter) {
+                        ForEach(section.contacts) { contact in
+                            ContactRow(contact: contact).tag(contact.id)
                         }
-                        .sectionIndexLabel(section.letter)
                     }
+                    .sectionIndexLabel(section.letter)
                 }
-                if query.isEmpty {
-                    Section {} footer: {
-                        Text("\(model.store.contacts.count) Contacts").frame(maxWidth: .infinity)
+            }
+            if query.isEmpty {
+                Section {} footer: {
+                    Text("\(model.store.contacts.count) Contacts").frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .listStyle(.plain)
+        .environment(\.defaultMinListHeaderHeight, 30)
+        .listSectionSpacing(.compact)
+        .listSectionIndexVisibility(sort == .name && query.isEmpty ? .visible : .hidden)
+        .refreshable { await model.store.sync() }
+        .searchable(text: $query, prompt: "Search")
+        .autocorrectionDisabled()
+        .textInputAutocapitalization(.never)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Picker("Sort By", selection: $sort) {
+                        ForEach(ContactSort.allCases) { Text($0.title).tag($0) }
                     }
-                }
+                } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
             }
-            .listStyle(.plain)
-            .environment(\.defaultMinListHeaderHeight, 30)
-            .listSectionSpacing(.compact)
-            .listSectionIndexVisibility(sort == .name && query.isEmpty ? .visible : .hidden)
-            .navigationTitle("Contacts")
-            .refreshable { await model.store.sync() }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker("Sort By", selection: $sort) {
-                            ForEach(ContactSort.allCases) { Text($0.title).tag($0) }
-                        }
-                    } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showNew = true } label: { Label("New Contact", systemImage: "plus") }
-                }
+            // The search field sits in the bottom bar with the add button beside it (as in iOS Contacts).
+            DefaultToolbarItem(kind: .search, placement: .bottomBar)
+            ToolbarSpacer(.fixed, placement: .bottomBar)
+            ToolbarItem(placement: .bottomBar) {
+                Button { showNew = true } label: { Label("New Contact", systemImage: "plus") }
             }
-            // Search is an icon in the toolbar that expands into a field; results filter this list in place.
-            .searchable(text: $query, prompt: "Search contacts")
-            .searchToolbarBehavior(.minimize)
-            .autocorrectionDisabled()
-            .textInputAutocapitalization(.never)
-            .overlay {
-                if !query.isEmpty && model.store.search(query).isEmpty {
-                    ContentUnavailableView.search(text: query)
-                } else if model.store.contacts.isEmpty {
-                    ContentUnavailableView("No Contacts", systemImage: "person.2", description: Text("Pull down to sync, or tap + to add one."))
-                }
-            }
-        } detail: {
-            NavigationStack {
-                if let id = model.contactsSelection {
-                    ContactDetailView(contactID: id)
-                } else {
-                    ContentUnavailableView("Select a Contact", systemImage: "person.crop.circle")
-                }
+        }
+        .overlay {
+            if !query.isEmpty && model.store.search(query).isEmpty {
+                ContentUnavailableView.search(text: query)
+            } else if model.store.contacts.isEmpty {
+                ContentUnavailableView("No Contacts", systemImage: "person.2", description: Text("Pull down to sync, or tap + to add one."))
             }
         }
         .sheet(isPresented: $showNew) {

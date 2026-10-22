@@ -37,29 +37,10 @@ struct RootView: View {
 
     var body: some View {
         if model.hasOnboarded {
-            MainTabs()
+            HomeView()
         } else {
             OnboardingFlow()
         }
     }
 }
 
-struct MainTabs: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        // The system tab bar: floating Liquid Glass, morphing selection, minimize-on-scroll and the search tab
-        // all come from it, so they animate the way iOS does everywhere else.
-        TabView(selection: Binding(get: { model.tab }, set: select)) {
-            Tab("Contacts", systemImage: "person.2", value: AppTab.contacts) { ContactsView() }
-            Tab("Events", systemImage: "calendar", value: AppTab.events) { EventsView() }
-            Tab("Settings", systemImage: "slider.horizontal.3", value: AppTab.settings) { SettingsView() }
-        }
-        .tabBarMinimizeBehavior(.onScrollDown)
-    }
-
-    private func select(_ new: AppTab) {
-        if new == model.tab { model.reselect(new) }
-        model.tab = new
-    }
-}

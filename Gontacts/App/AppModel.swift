@@ -2,16 +2,18 @@ import Observation
 import SwiftUI
 import UserNotifications
 
-enum AppTab: Hashable { case contacts, events, settings }
+enum HomeMode: String, CaseIterable, Identifiable {
+    case contacts = "Contacts", events = "Events"
+    var id: String { rawValue }
+}
 
 @MainActor @Observable
 final class AppModel {
     let store = ContactsStore()
     let settings = ReminderSettings()
 
-    var tab: AppTab = .contacts
-    /// Bumped when the user taps the tab they are already on, so that screen can scroll back to its start.
-    var tabReselected: [AppTab: Int] = [:]
+    /// Which list the segmented control at the top is showing.
+    var homeMode: HomeMode = .contacts
     var contactsSelection: String?
     /// Selected event occurrence id (contactID|event|time).
     var eventsSelection: String?
@@ -37,10 +39,8 @@ final class AppModel {
         wishRequestID = nil
     }
 
-    func reselect(_ tab: AppTab) { tabReselected[tab, default: 0] += 1 }
-
     func open(contactID: String, wish: Bool) {
-        tab = .contacts
+        homeMode = .contacts
         contactsSelection = contactID
         wishRequestID = wish ? contactID : nil
     }

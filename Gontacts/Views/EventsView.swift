@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct EventsView: View {
+struct EventsList: View {
     @Environment(AppModel.self) private var model
     @State private var sections: [EventSection] = []
     /// Where the list is relative to "today". Only changes when it crosses a threshold, so scrolling doesn't re-render.
@@ -39,77 +39,62 @@ struct EventsView: View {
         @Bindable var model = model
         let anchor = EventTimeline.anchorID(in: sections)
 
-        NavigationSplitView {
-            ScrollViewReader { proxy in
-                List(selection: $model.eventsSelection) {
-                    ForEach(sections) { section in
-                        Section {
-                            ForEach(section.occurrences) { o in
-                                EventRow(occurrence: o, isToday: section.role == .today).tag(o.id)
-                                    .listRowBackground(section.role == .today ? Color.accentColor.opacity(0.14) : nil)
-                            }
-                        } header: {
-                            HStack {
-                                Text(section.title).foregroundStyle(section.role == .today ? Color.accentColor : .secondary)
-                                Spacer()
-                                if let trailing = section.trailing { Text(trailing).font(.footnote).textCase(nil) }
-                            }
-                            .id(section.id)
+        ScrollViewReader { proxy in
+            List(selection: $model.eventsSelection) {
+                ForEach(sections) { section in
+                    Section {
+                        ForEach(section.occurrences) { o in
+                            EventRow(occurrence: o, isToday: section.role == .today).tag(o.id)
+                                .listRowBackground(section.role == .today ? Color.accentColor.opacity(0.14) : nil)
                         }
+                    } header: {
+                        HStack {
+                            Text(section.title).foregroundStyle(section.role == .today ? Color.accentColor : .secondary)
+                            Spacer()
+                            if let trailing = section.trailing { Text(trailing).font(.footnote).textCase(nil) }
+                        }
+                        .id(section.id)
                     }
                 }
-                .background(ScrollViewHandle(box: scrollHandle))
-                .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollTracker.offsetY = y }
-                .onScrollGeometryChange(for: ScrollRelation.self) { geo in
-                    guard let a = scrollTracker.anchorOffsetY else { return .atAnchor }
-                    let d = geo.contentOffset.y - a
-                    return d < -Self.awayThreshold ? .above : d > Self.awayThreshold ? .below : .atAnchor
-                } action: { _, new in relation = new }
-                .overlay(alignment: .bottom) {
-                    if relation != .atAnchor, let anchor {
-                        // Fires on touch-down rather than on a completed tap: a touch during a fling is otherwise
-                        // spent on stopping the scroll, which made the button feel dead until the list settled.
-                        Label("Today", systemImage: relation == .above ? "arrow.down" : "arrow.up")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .glassEffect(.regular.interactive(), in: .capsule)
-                            .contentShape(.capsule)
-                            .onLongPressGesture(minimumDuration: 0, maximumDistance: 40) { jumpToToday(anchor, proxy) }
-                            .accessibilityAddTraits(.isButton)
-                            .accessibilityAction { jumpToToday(anchor, proxy) }
-                            .padding(.bottom, 12)
-                        .transition(.scale.combined(with: .opacity))
-                    }
-                }
-                .animation(.smooth, value: relation)
-                .onChange(of: model.tabReselected[.events] ?? 0) { _, _ in
-                    if let anchor { jumpToToday(anchor, proxy) }
-                }
-                .task(id: anchor) {
-                    guard let anchor else { return }
-                    scrollTracker.anchorOffsetY = nil
-                    try? await Task.sleep(for: .milliseconds(50))
-                    proxy.scrollTo(anchor, anchor: Self.anchorPoint)
-                    // Remember where "today" landed so we can tell when the user has scrolled away from it.
-                    try? await Task.sleep(for: .milliseconds(700))
-                    scrollTracker.anchorOffsetY = scrollTracker.offsetY
+            }
+            .background(ScrollViewHandle(box: scrollHandle))
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollTracker.offsetY = y }
+            .onScrollGeometryChange(for: ScrollRelation.self) { geo in
+                guard let a = scrollTracker.anchorOffsetY else { return .atAnchor }
+                let d = geo.contentOffset.y - a
+                return d < -Self.awayThreshold ? .above : d > Self.awayThreshold ? .below : .atAnchor
+            } action: { _, new in relation = new }
+            .overlay(alignment: .bottom) {
+                if relation != .atAnchor, let anchor {
+                    // Fires on touch-down rather than on a completed tap: a touch during a fling is otherwise
+                    // spent on stopping the scroll, which made the button feel dead until the list settled.
+                    Label("Today", systemImage: relation == .above ? "arrow.down" : "arrow.up")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .glassEffect(.regular.interactive(), in: .capsule)
+                        .contentShape(.capsule)
+                        .onLongPressGesture(minimumDuration: 0, maximumDistance: 40) { jumpToToday(anchor, proxy) }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAction { jumpToToday(anchor, proxy) }
+                        .padding(.bottom, 12)
+                    .transition(.scale.combined(with: .opacity))
                 }
             }
-            .navigationTitle("Events")
-            .overlay {
-                if sections.isEmpty {
-                    ContentUnavailableView("No Events", systemImage: "calendar", description: Text("Add birthdays and anniversaries to your contacts and they'll show up here."))
-                }
+            .animation(.smooth, value: relation)
+            .task(id: anchor) {
+                guard let anchor else { return }
+                scrollTracker.anchorOffsetY = nil
+                try? await Task.sleep(for: .milliseconds(50))
+                proxy.scrollTo(anchor, anchor: Self.anchorPoint)
+                // Remember where "today" landed so we can tell when the user has scrolled away from it.
+                try? await Task.sleep(for: .milliseconds(700))
+                scrollTracker.anchorOffsetY = scrollTracker.offsetY
             }
-        } detail: {
-            NavigationStack {
-                if let selection = model.eventsSelection {
-                    // List selection is the occurrence id ("contactID|event|time"); the contact id is its first part.
-                    ContactDetailView(contactID: String(selection.prefix { $0 != "|" }))
-                } else {
-                    ContentUnavailableView("Select an Event", systemImage: "calendar")
-                }
+        }
+        .overlay {
+            if sections.isEmpty {
+                ContentUnavailableView("No Events", systemImage: "calendar", description: Text("Add birthdays and anniversaries to your contacts and they'll show up here."))
             }
         }
         .onChange(of: model.store.revision, initial: true) { _, _ in sections = buildSections() }
