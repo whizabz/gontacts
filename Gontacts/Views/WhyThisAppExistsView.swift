@@ -1,32 +1,35 @@
 import SwiftUI
 
-/// Explains why the app exists: the same year-less birthday is stored differently by Apple and Google Contacts.
+/// Why the app exists: the same year-less birthday is stored differently by Apple and Google Contacts.
+///
+/// This is the one and only version of the screen. Onboarding and Settings both show it, so editing the text or the
+/// cards here changes both. Onboarding passes `onContinue` to get a "Got it" button; Settings leaves it out.
 struct WhyThisAppExistsView: View {
+    var onContinue: (() -> Void)?
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                VStack(spacing: 12) {
-                    Image(systemName: "calendar.badge.checkmark")
-                        .font(.system(size: 32)).foregroundStyle(.tint)
-                        .frame(width: 64, height: 64)
-                        .background(Color.accentColor.opacity(0.12), in: .rect(cornerRadius: 20))
-                    Text("Why This App Exists").font(.title.bold()).multilineTextAlignment(.center)
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Why This App Exists").font(.largeTitle.bold())
+                    Text("Apple and Google save dates without a year differently. Gontacts bridges that gap, so you can manage your Google contacts on iPhone and your year-less birthdays stay intact.")
+                        .font(.title3).foregroundStyle(.secondary)
+                    ComparisonCards(compact: true).padding(.top, 4)
                 }
-
-                Text("Gontacts is mainly for people who keep Google Contacts as the one place for all their contacts, and who use it to store important dates, like birthdays and anniversaries, to use later. Apple Contacts has trouble saving dates to Google Contacts, and that is the reason this app exists.")
-                    .font(.body).lineSpacing(4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Text("The same contact, saved two ways")
-                    .font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 4)
-
-                ComparisonCards()
+                .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 16)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 28)
-            .frame(maxWidth: 640)
-            .frame(maxWidth: .infinity)
+            if let onContinue {
+                Button(action: onContinue) {
+                    Text("Got it").font(.headline).frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glassProminent).controlSize(.extraLarge)
+                .padding(.horizontal, 24).padding(.bottom, 12)
+                .frame(maxWidth: 560)
+            }
         }
+        .frame(maxWidth: .infinity)
         .background(Color(.systemGroupedBackground))
         .navigationBarTitleDisplayMode(.inline)
     }

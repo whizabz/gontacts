@@ -14,7 +14,7 @@ struct OnboardingFlow: View {
                 .navigationDestination(for: OnboardingStep.self) { step in
                     switch step {
                     case .why:
-                        WhyStepView { path.append(.connect) }
+                        WhyThisAppExistsView(onContinue: { path.append(.connect) })
                     case .connect:
                         ConnectView(onConnected: { path.append(model.store.mode == .google ? .myCard : .reminders) },
                                     onAccessMissing: { path.append(.access) })
@@ -100,30 +100,6 @@ struct WelcomeView: View {
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
         .background(Color(.systemGroupedBackground))
-    }
-}
-
-/// Why the app exists, as two cards: how Apple and Google each save the same year-less birthday.
-struct WhyStepView: View {
-    let onContinue: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Why This App Exists").font(.largeTitle.bold())
-            Text("Apple and Google save dates without a year differently. Gontacts bridges that gap, so you can manage your Google contacts on iPhone and your year-less birthdays stay intact.")
-                .font(.title3).foregroundStyle(.secondary)
-            ComparisonCards(compact: true).padding(.top, 4)
-            Spacer(minLength: 0)
-            Button(action: onContinue) {
-                Text("Got it").font(.headline).frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.glassProminent).controlSize(.extraLarge)
-        }
-        .padding(.horizontal, 24).padding(.bottom, 12)
-        .frame(maxWidth: 560)
-        .frame(maxWidth: .infinity)
-        .background(Color(.systemGroupedBackground))
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
