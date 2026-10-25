@@ -49,7 +49,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    NavigationLink("Why This App Exists") { WhyThisAppExistsView() }
+                    NavigationLink("Why Gontacts?") { WhyThisAppExistsView() }
                 }
 
                 accountSection

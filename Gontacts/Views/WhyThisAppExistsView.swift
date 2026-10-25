@@ -11,7 +11,7 @@ struct WhyThisAppExistsView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Why This App Exists").font(.largeTitle.bold())
+                    Text("Why Gontacts?").font(.largeTitle.bold())
                     Text("Apple and Google store year-less dates differently. This causes issues with contacts stored in Google Contacts. Gontacts saves the day by speaking Google's language.")
                         .font(.title3).foregroundStyle(.secondary)
                     ComparisonCards(compact: true).padding(.top, 4)
