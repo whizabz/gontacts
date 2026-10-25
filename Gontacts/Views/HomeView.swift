@@ -13,17 +13,15 @@ struct HomeView: View {
         @Bindable var model = model
         NavigationSplitView {
             Group {
-                if !query.isEmpty {
-                    ContactSearchResults(query: query)
-                } else {
-                    switch model.homeMode {
-                    case .contacts: ContactsList()
-                    case .events: EventsList()
-                    }
+                switch model.homeMode {
+                case .contacts:
+                    if query.isEmpty { ContactsList() } else { ContactSearchResults(query: query) }
+                case .events:
+                    EventsList(query: query)
                 }
             }
             // Search and add live here, not in either list, so they stay put on both Contacts and Events.
-            .searchable(text: $query, prompt: "Search")
+            .searchable(text: $query, prompt: model.homeMode == .events ? "Search events" : "Search contacts")
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
             .toolbarTitleDisplayMode(.inline)
@@ -47,7 +45,7 @@ struct HomeView: View {
             }
         } detail: {
             NavigationStack {
-                switch (query.isEmpty ? model.homeMode : .contacts) {
+                switch model.homeMode {
                 case .contacts:
                     if let id = model.contactsSelection {
                         ContactDetailView(contactID: id)

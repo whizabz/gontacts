@@ -2,6 +2,8 @@ import SwiftUI
 
 struct EventsList: View {
     @Environment(AppModel.self) private var model
+    /// Search text from the home screen: only events for contacts matching it are shown.
+    var query = ""
     @State private var sections: [EventSection] = []
     /// Where the list is relative to "today". Only changes when it crosses a threshold, so scrolling doesn't re-render.
     @State private var relation: ScrollRelation = .atAnchor
@@ -31,7 +33,13 @@ struct EventsList: View {
         let today = Calendar.current.startOfDay(for: .now)
         let start = Calendar.current.date(byAdding: .month, value: -12, to: today)!
         let end = Calendar.current.date(byAdding: .month, value: 12, to: today)!
-        let all = EventTimeline.occurrences(for: model.store.contacts, from: start, to: end)
+        let contacts = query.isEmpty ? model.store.contacts : model.store.search(query)
+        var all = EventTimeline.occurrences(for: contacts, from: start, to: end)
+        if !query.isEmpty {
+            // While searching, each event appears once, at its next occurrence (today counts), not once per year.
+            var seen = Set<String>()
+            all = all.filter { $0.date >= today && seen.insert("\($0.contactID)|\($0.event.id)").inserted }
+        }
         return EventTimeline.sections(from: all, today: today)
     }
 
@@ -65,7 +73,7 @@ struct EventsList: View {
                 return d < -Self.awayThreshold ? .above : d > Self.awayThreshold ? .below : .atAnchor
             } action: { _, new in relation = new }
             .overlay(alignment: .bottom) {
-                if relation != .atAnchor, let anchor {
+                if relation != .atAnchor, query.isEmpty, let anchor {
                     // Fires on touch-down rather than on a completed tap: a touch during a fling is otherwise
                     // spent on stopping the scroll, which made the button feel dead until the list settled.
                     Label("Today", systemImage: relation == .above ? "arrow.down" : "arrow.up")
@@ -94,10 +102,19 @@ struct EventsList: View {
         }
         .overlay {
             if sections.isEmpty {
-                ContentUnavailableView("No Events", systemImage: "calendar", description: Text("Add birthdays and anniversaries to your contacts and they'll show up here."))
+                if query.isEmpty {
+                    ContentUnavailableView("No Events", systemImage: "calendar", description: Text("Add birthdays and anniversaries to your contacts and they'll show up here."))
+                } else if model.store.search(query).isEmpty {
+                    ContentUnavailableView.search(text: query)
+                } else {
+                    // The search matched people, but none of them has a date to show.
+                    ContentUnavailableView("No Events Found", systemImage: "calendar.badge.exclamationmark",
+                                           description: Text("No contact matching “\(query)” has a birthday, anniversary or other date."))
+                }
             }
         }
         .onChange(of: model.store.revision, initial: true) { _, _ in sections = buildSections() }
+        .onChange(of: query) { _, _ in sections = buildSections() }
     }
 }
 
