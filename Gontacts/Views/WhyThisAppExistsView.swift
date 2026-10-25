@@ -57,7 +57,7 @@ struct ComparisonCards: View {
                 .tiltParallax(travel: 8)
 
             // This card has no flag line under its date, so it gets the same height as the Apple one.
-            ContactCardSample(compact: compact, extraBottom: 18, logo: AnyView(Image("GoogleG").resizable().scaledToFit()),
+            ContactCardSample(compact: compact, extraBottom: 4, logo: AnyView(Image("GoogleG").resizable().scaledToFit()),
                               birthday: AnyView(
                                 HStack(alignment: .firstTextBaseline, spacing: 14) {
                                     Text("--1126").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
