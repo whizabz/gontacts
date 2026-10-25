@@ -50,7 +50,9 @@ struct ContactsList: View {
         @Bindable var model = model
         List(selection: $model.contactsSelection) {
             if let card = model.store.myCard {
+                // Like iOS Contacts: no line above My Card, and none between it and the first letter.
                 MyCardRow(contact: card).tag(card.id).contactContextMenu(card)
+                    .listRowSeparator(.hidden)
             }
             if sort == .recent {
                 ForEach(model.store.recentlyModified.filter { $0.id != model.store.myCard?.id }) { contact in
@@ -58,10 +60,16 @@ struct ContactsList: View {
                 }
             } else {
                 ForEach(sections, id: \.letter) { section in
-                    Section(section.letter) {
+                    Section {
                         ForEach(section.contacts) { contact in
                             ContactRow(contact: contact).tag(contact.id).contactContextMenu(contact)
+                                // The full-width line under the letter replaces the first row's own top line.
+                                .listRowSeparator(contact.id == section.contacts.first?.id ? .hidden : .automatic, edges: .top)
+                                // ...and the last row ends the section without a line, as in iOS Contacts.
+                                .listRowSeparator(contact.id == section.contacts.last?.id ? .hidden : .automatic, edges: .bottom)
                         }
+                    } header: {
+                        SectionLetterHeader(letter: section.letter)
                     }
                     .sectionIndexLabel(section.letter)
                 }
@@ -89,6 +97,21 @@ struct ContactsList: View {
                 ContentUnavailableView("No Contacts", systemImage: "person.2", description: Text("Pull down to sync, or tap + to add one."))
             }
         }
+    }
+}
+
+/// The letter that starts a section, with a full-width line under it; the contacts below keep their indented lines.
+private struct SectionLetterHeader: View {
+    let letter: String
+    @Environment(\.displayScale) private var displayScale
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(letter).font(.subheadline).foregroundStyle(.secondary)
+            Rectangle().fill(Color(.separator)).frame(height: 1 / displayScale)
+        }
+        .padding(.top, -6)
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
