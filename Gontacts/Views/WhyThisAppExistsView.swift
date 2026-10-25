@@ -42,43 +42,38 @@ struct ComparisonCards: View {
 
     var body: some View {
         VStack(spacing: compact ? 24 : 18) {
-            // Each card drifts a little as the phone is tilted, by different amounts so they seem to sit at
-            // different depths. The margin inside the host stops the shadow being clipped.
-            ParallaxHost(travel: 6) {
-                ContactCardSample(compact: compact, logo: AnyView(Image(systemName: "apple.logo").resizable().scaledToFit()),
-                                  birthday: AnyView(
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        HStack(alignment: .firstTextBaseline, spacing: 14) {
-                                            Text("1604-11-26").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
-                                                .dateHighlight(delay: 0.5)
-                                            Text("(26 November)").font(.footnote).foregroundStyle(.secondary)
-                                        }
-                                        Text("X-APPLE-OMIT-YEAR=1604").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
-                                    }))
-                    .padding(Self.shadowMargin)
-            }
-            .padding(-Self.shadowMargin)
-
-            ParallaxHost(travel: 10) {
-                ContactCardSample(compact: compact, logo: AnyView(Image("GoogleG").resizable().scaledToFit()),
-                                  birthday: AnyView(
+            // Each card moves and turns a little as the phone is tilted, by different amounts so they seem to sit
+            // at different depths.
+            ContactCardSample(compact: compact, logo: AnyView(Image(systemName: "apple.logo").resizable().scaledToFit()),
+                              birthday: AnyView(
+                                VStack(alignment: .leading, spacing: 2) {
                                     HStack(alignment: .firstTextBaseline, spacing: 14) {
-                                        Text("--1126").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
-                                            .dateHighlight(delay: 0.9)
+                                        Text("1604-11-26").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
+                                            .dateHighlight(delay: 0.5)
                                         Text("(26 November)").font(.footnote).foregroundStyle(.secondary)
-                                    }))
-                    .padding(Self.shadowMargin)
-            }
-            .padding(-Self.shadowMargin)
+                                    }
+                                    Text("X-APPLE-OMIT-YEAR=1604").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+                                }))
+                .tiltParallax(travel: 8)
+
+            // This card has no flag line under its date, so it gets the same height as the Apple one.
+            ContactCardSample(compact: compact, extraBottom: 18, logo: AnyView(Image("GoogleG").resizable().scaledToFit()),
+                              birthday: AnyView(
+                                HStack(alignment: .firstTextBaseline, spacing: 14) {
+                                    Text("--1126").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
+                                        .dateHighlight(delay: 0.9)
+                                    Text("(26 November)").font(.footnote).foregroundStyle(.secondary)
+                                }))
+                .tiltParallax(travel: 14)
         }
     }
-
-    private static let shadowMargin: CGFloat = 20
 }
 
 /// A rolodex-style card for the sample contact. `logo` is the platform mark, drawn faintly in the top right corner.
 private struct ContactCardSample: View {
     var compact = false
+    /// Extra space at the bottom, so cards with fewer lines can match a taller one.
+    var extraBottom: CGFloat = 0
     let logo: AnyView
     let birthday: AnyView
 
@@ -101,7 +96,7 @@ private struct ContactCardSample: View {
             row("birthday") { birthday }
         }
         .font(compact ? .footnote : .subheadline)
-        .padding(.horizontal, 16).padding(.top, compact ? 14 : 16).padding(.bottom, 4)
+        .padding(.horizontal, 16).padding(.top, compact ? 14 : 16).padding(.bottom, 4 + extraBottom)
         .frame(maxWidth: .infinity, alignment: .leading)
         // The card itself has the punch holes cut out of it, so whatever is behind shows through them.
         .background {
