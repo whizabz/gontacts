@@ -58,22 +58,14 @@ private struct InfoRow: View {
 /// The app's own icon. Uses the exported artwork when the asset catalog has it, otherwise the icon file in the bundle.
 private struct AppIconImage: View {
     var size: CGFloat = 84
-
-    private var image: UIImage? {
-        UIImage(named: "AppIconArt") ?? UIImage(named: "Gontacts60x60")
-    }
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        Group {
-            if let image {
-                Image(uiImage: image).resizable().interpolation(.high).scaledToFit()
-            } else {
-                Image(systemName: "person.crop.circle.fill").font(.system(size: size * 0.5)).foregroundStyle(.tint)
-            }
-        }
-        .frame(width: size, height: size)
-        .clipShape(.rect(cornerRadius: size * 0.2237, style: .continuous))
-        .shadow(color: .black.opacity(0.18), radius: 10, y: 6)
+        // "AppIconArt" has a light and a dark rendering of the icon; the asset catalog picks the one that matches.
+        Image("AppIconArt").resizable().interpolation(.high).scaledToFit()
+            .frame(width: size, height: size)
+            .clipShape(.rect(cornerRadius: size * 0.2237, style: .continuous))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.5 : 0.18), radius: 10, y: 6)
         .accessibilityHidden(true)
     }
 }

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <!-- Dark appearance: same tabs, slightly deeper so they sit well on the charcoal cover -->
-  <rect x="860" y="0"       width="164" height="342" fill="#E04A83"/>
-  <rect x="860" y="341.33"  width="164" height="342" fill="#F0A21A"/>
-  <rect x="860" y="682.67"  width="164" height="341.33" fill="#19A397"/>
+  <rect x="860" y="0"       width="164" height="342" fill="#DB3B2F"/>
+  <rect x="860" y="341.33"  width="164" height="342" fill="#EBAE04"/>
+  <rect x="860" y="682.67"  width="164" height="341.33" fill="#2E9A4B"/>
 </svg>
