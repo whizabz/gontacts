@@ -141,7 +141,12 @@ final class ContactsStore {
 
     // MARK: - Sign in / out
 
+    /// Set when the last sign-in worked but the contacts permission wasn't granted. Onboarding shows a dedicated
+    /// screen for it; anywhere else the alert text below is shown.
+    private(set) var contactsAccessMissing = false
+
     func signInWithGoogle() async {
+        contactsAccessMissing = false
         do {
             try await auth.signIn()
             setMode(.google)
@@ -152,6 +157,8 @@ final class ContactsStore {
             rebuild()
             await sync()
         } catch AuthError.cancelled {
+        } catch AuthError.contactsAccessMissing {
+            contactsAccessMissing = true
         } catch {
             errorMessage = error.localizedDescription
         }

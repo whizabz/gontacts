@@ -5,9 +5,12 @@ import UIKit
 
 enum AuthError: LocalizedError {
     case notConfigured, cancelled, badResponse, signedOut
+    /// Signed in, but the contacts permission was unticked on Google's screen.
+    case contactsAccessMissing
 
     var errorDescription: String? {
         switch self {
+        case .contactsAccessMissing: "Gontacts needs access to your contacts. Try again and keep “See, edit, download and permanently delete your contacts” ticked on Google's screen."
         case .notConfigured: "Google sign-in isn't configured. Add GOOGLE_CLIENT_ID to Config/Secrets.xcconfig."
         case .cancelled: "Sign-in was cancelled."
         case .badResponse: "Google returned an unexpected response."
@@ -27,7 +30,8 @@ final class GoogleAuth: NSObject, ASWebAuthenticationPresentationContextProvidin
     }
 
     private static let keychainKey = "google.tokens"
-    private static let scope = "https://www.googleapis.com/auth/contacts openid email"
+    private static let contactsScope = "https://www.googleapis.com/auth/contacts"
+    private static let scope = "\(contactsScope) openid email"
 
     static var clientID: String {
         let id = Bundle.main.object(forInfoDictionaryKey: "GoogleClientID") as? String ?? ""
@@ -78,9 +82,17 @@ final class GoogleAuth: NSObject, ASWebAuthenticationPresentationContextProvidin
             "client_id": Self.clientID, "code": code, "code_verifier": verifier,
             "redirect_uri": redirectURI, "grant_type": "authorization_code",
         ])
+        // Google lets people untick individual permissions, so check what was actually granted.
+        // Nothing is stored unless the contacts permission is there.
+        guard Self.grantsContactsAccess(response.scope) else { throw AuthError.contactsAccessMissing }
         store(Tokens(accessToken: response.access_token, refreshToken: response.refresh_token,
                      expiry: .now.addingTimeInterval(TimeInterval(response.expires_in - 60)),
                      email: response.id_token.flatMap(Self.email(fromIDToken:))))
+    }
+
+    /// Whether the space-separated scopes Google reports include full contacts access.
+    static func grantsContactsAccess(_ scope: String?) -> Bool {
+        (scope ?? "").split(separator: " ").contains { $0 == contactsScope[...] }
     }
 
     func validAccessToken() async throws -> String {
@@ -120,6 +132,7 @@ final class GoogleAuth: NSObject, ASWebAuthenticationPresentationContextProvidin
         let refresh_token: String?
         let expires_in: Int
         let id_token: String?
+        let scope: String?
     }
 
     private func tokenRequest(_ params: [String: String]) async throws -> TokenResponse {

@@ -21,29 +21,7 @@ struct WhyThisAppExistsView: View {
                     .font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 4)
 
-                ContactCardSample(logo: AnyView(Image(systemName: "apple.logo").resizable().scaledToFit()),
-                                  birthday: AnyView(
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        (Text("1604-11-26").fontWeight(.semibold) + Text("  (26 November)").font(.footnote).foregroundStyle(.secondary))
-                                        Text("X-APPLE-OMIT-YEAR=1604").font(.caption).foregroundStyle(.secondary)
-                                    }.font(.system(.footnote, design: .monospaced))))
-
-                ContactCardSample(logo: AnyView(Image("GoogleG").resizable().scaledToFit()),
-                                  birthday: AnyView(
-                                    (Text("--1126").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
-                                     + Text("  (26 November)").font(.footnote).foregroundStyle(.secondary))))
-
-                VStack(spacing: 10) {
-                    Note(symbol: "exclamationmark.circle", tint: .red) {
-                        Text("Sync issue. ").bold().foregroundStyle(.red)
-                            + Text("Google's ") + code("--1126")
-                            + Text(" is vCard 4.0 shorthand inside a vCard 3.0 file. iOS can't parse that over CardDAV, so year-less birthdays vanish.")
-                    }
-                    Note(symbol: "checkmark.circle", tint: .green) {
-                        Text("Gontacts keeps them. ").bold().foregroundStyle(.green)
-                            + Text("It works with Google's own format, so those dates stay intact.")
-                    }
-                }
+                ComparisonCards()
             }
             .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 28)
             .frame(maxWidth: 640)
@@ -52,37 +30,63 @@ struct WhyThisAppExistsView: View {
         .background(Color(.systemGroupedBackground))
         .navigationBarTitleDisplayMode(.inline)
     }
+}
 
-    private func code(_ s: String) -> Text {
-        Text(s).font(.system(.footnote, design: .monospaced))
+/// The same sample contact as Apple Contacts and Google Contacts store it, with the stored form of the birthday
+/// highlighted. `compact` tightens the cards to fit alongside other content (onboarding).
+struct ComparisonCards: View {
+    var compact = false
+
+    var body: some View {
+        VStack(spacing: compact ? 12 : 18) {
+            ContactCardSample(compact: compact, logo: AnyView(Image(systemName: "apple.logo").resizable().scaledToFit()),
+                              birthday: AnyView(
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(alignment: .firstTextBaseline, spacing: 14) {
+                                        Text("1604-11-26").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
+                                            .dateHighlight(delay: 0.5)
+                                        Text("(26 November)").font(.footnote).foregroundStyle(.secondary)
+                                    }
+                                    Text("X-APPLE-OMIT-YEAR=1604").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+                                }))
+
+            ContactCardSample(compact: compact, logo: AnyView(Image("GoogleG").resizable().scaledToFit()),
+                              birthday: AnyView(
+                                HStack(alignment: .firstTextBaseline, spacing: 14) {
+                                    Text("--1126").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
+                                        .dateHighlight(delay: 0.9)
+                                    Text("(26 November)").font(.footnote).foregroundStyle(.secondary)
+                                }))
+        }
     }
 }
 
 /// A rolodex-style card for the sample contact. `logo` is the platform mark, drawn faintly in the top right corner.
 private struct ContactCardSample: View {
+    var compact = false
     let logo: AnyView
     let birthday: AnyView
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
-                Text("H").font(.title2.weight(.semibold)).foregroundStyle(.tint)
-                    .frame(width: 56, height: 56)
+                Text("H").font(compact ? .headline : .title2.weight(.semibold)).foregroundStyle(.tint)
+                    .frame(width: compact ? 40 : 56, height: compact ? 40 : 56)
                     .background(Color.accentColor.opacity(0.12), in: .circle)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Hana Ito").font(.title3.bold())
+                    Text("Hana Ito").font(compact ? .headline : .title3.bold())
                     Text("Product Designer · Lumen Studio").font(.footnote).foregroundStyle(.secondary)
                 }
             }
-            .padding(.bottom, 12)
+            .padding(.bottom, compact ? 8 : 12)
 
             row("mobile") { Text(verbatim: "+81 90 5550 0142") }
             row("work") { Text(verbatim: "hana@lumen.example") }
             row("home") { Text(verbatim: "2-14-5 Minami-Aoyama, Tokyo") }
             row("birthday") { birthday }
         }
-        .font(.subheadline)
-        .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 4)
+        .font(compact ? .footnote : .subheadline)
+        .padding(.horizontal, 16).padding(.top, compact ? 14 : 16).padding(.bottom, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 22))
         // Faint platform logo, like a watermark.
@@ -104,22 +108,47 @@ private struct ContactCardSample: View {
                 value()
                 Spacer(minLength: 0)
             }
-            .padding(.vertical, 9)
+            .padding(.vertical, compact ? 6 : 9)
         }
     }
 }
 
-private struct Note<Content: View>: View {
-    let symbol: String
-    let tint: Color
-    @ViewBuilder var content: () -> Content
+// MARK: - Animated highlight
 
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: symbol).font(.title3).foregroundStyle(tint)
-            content().font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 12)
-        .background(tint.opacity(0.1), in: .rect(cornerRadius: 18))
+/// A highlighter-style marker behind the birthday: it sweeps in from the left, then pulses a few times to draw the
+/// eye to how the two cards store the same date differently. Stays still when Reduce Motion is on.
+private struct DateHighlight: ViewModifier {
+    let delay: Double
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var swept = false
+    @State private var glow = false
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.highlighter)
+                    .padding(.horizontal, -4).padding(.vertical, -3)
+                    .scaleEffect(x: swept || reduceMotion ? 1 : 0, anchor: .leading)
+                    .opacity(glow ? 0.55 : 1)
+            }
+            .onAppear {
+                guard !reduceMotion else { swept = true; return }
+                withAnimation(.easeOut(duration: 0.7).delay(delay)) { swept = true }
+                withAnimation(.easeInOut(duration: 0.9).delay(delay + 0.8).repeatCount(5, autoreverses: true)) { glow = true }
+            }
     }
+}
+
+extension View {
+    fileprivate func dateHighlight(delay: Double) -> some View { modifier(DateHighlight(delay: delay)) }
+}
+
+private extension Color {
+    /// Yellowish orange on light backgrounds; a warmer, dimmer amber on dark so it glows without glaring.
+    static let highlighter = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 1.0, green: 0.72, blue: 0.22, alpha: 0.42)
+            : UIColor(red: 1.0, green: 0.69, blue: 0.13, alpha: 0.42)
+    })
 }

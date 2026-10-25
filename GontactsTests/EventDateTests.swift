@@ -238,3 +238,19 @@ final class SampleDataTests: XCTestCase {
         XCTAssertTrue(refreshed.contains { $0.id == "people/mine" })
     }
 }
+
+@MainActor
+final class ContactsPermissionTests: XCTestCase {
+    func testContactsAccessIsDetectedFromGrantedScopes() {
+        let contacts = "https://www.googleapis.com/auth/contacts"
+        XCTAssertTrue(GoogleAuth.grantsContactsAccess("openid \(contacts) https://www.googleapis.com/auth/userinfo.email"))
+        XCTAssertTrue(GoogleAuth.grantsContactsAccess(contacts))
+    }
+
+    func testMissingOrReadOnlyContactsAccessIsRejected() {
+        XCTAssertFalse(GoogleAuth.grantsContactsAccess("openid https://www.googleapis.com/auth/userinfo.email"))
+        XCTAssertFalse(GoogleAuth.grantsContactsAccess("https://www.googleapis.com/auth/contacts.readonly"))
+        XCTAssertFalse(GoogleAuth.grantsContactsAccess(nil))
+        XCTAssertFalse(GoogleAuth.grantsContactsAccess(""))
+    }
+}

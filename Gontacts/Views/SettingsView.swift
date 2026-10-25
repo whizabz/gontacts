@@ -88,7 +88,12 @@ extension SettingsView {
         if model.store.mode == .demo {
             Section {
                 LabeledContent("Contacts", value: "Sample contacts")
-                Button("Sign in with Google") { Task { await model.store.signInWithGoogle() } }
+                Button("Sign in with Google") {
+                    Task {
+                        await model.store.signInWithGoogle()
+                        if model.store.contactsAccessMissing { model.store.errorMessage = AuthError.contactsAccessMissing.localizedDescription }
+                    }
+                }
             } header: {
                 Text("Account")
             } footer: {
