@@ -3,6 +3,9 @@ import Foundation
 /// Sample contacts whose dates are relative to today, so the demo always has
 /// something happening today (and confetti to show for it).
 enum SampleData {
+    /// The sample contact shown as My Card in demo mode.
+    static let myCardID = "people/sample-alex-morgan"
+
     static func contacts(today: Date = .now, calendar: Calendar = .current) -> [Contact] {
         let year = calendar.component(.year, from: today)
 
@@ -28,7 +31,16 @@ enum SampleData {
         func anniversary(_ d: EventDate) -> ContactEvent { ContactEvent(kind: .anniversary, date: d) }
         func other(_ label: String, _ d: EventDate) -> ContactEvent { ContactEvent(kind: .other, label: label, date: d) }
 
+        var me = person("Alex", "Morgan", org: "Fieldwork Design", title: "Design Director", phone: "+1 415 555 0199", email: "alex@fieldwork.example",
+                        events: [birthday(day(41, yearsAgo: 36))])
+        me.nickname = "Lex"
+        me.phones.append(LabeledValue(label: "work", value: "+1 415 555 0123"))
+        me.emails.append(LabeledValue(label: "home", value: "alex.morgan@example.com"))
+        me.addresses = [PostalAddress(label: "home", street: "48 Harbour Street", city: "San Francisco", region: "CA", postalCode: "94107", country: "USA")]
+        me.urls = [LabeledValue(label: "website", value: "https://alexmorgan.example"), LabeledValue(label: "LinkedIn", value: "https://linkedin.com/in/alexmorgan")]
+
         return [
+            me,
             person("Aanya", "Kapoor", phone: "+1 415 555 0101", events: [birthday(day(8))]),
             person("Ben", "Okafor", org: "Northwind", phone: "+1 415 555 0102", events: [anniversary(day(-12, yearsAgo: 5))]),
             person("Carla", "Mendes", phone: "+1 415 555 0103", email: "carla@example.com", events: [anniversary(day(1, yearsAgo: 8))]),
@@ -58,7 +70,9 @@ enum SampleData {
             updated.events = f.events
             return updated
         }
-        if let hana = fresh["people/sample-hana-ito"], !result.contains(where: { $0.id == hana.id }) { result.append(hana) }
+        for id in ["people/sample-hana-ito", myCardID] {
+            if let sample = fresh[id], !result.contains(where: { $0.id == id }) { result.append(sample) }
+        }
         return result
     }
 }

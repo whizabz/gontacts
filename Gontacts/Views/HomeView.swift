@@ -62,6 +62,9 @@ struct HomeView: View {
                 }
             }
         }
+        .sheet(isPresented: $model.showCards) {
+            NavigationStack { ContactCardsView(inSheet: true) }
+        }
         .sheet(item: $model.shareRequest, onDismiss: {
             if let url = pendingShare { pendingShare = nil; ShareSheet.present(url) }
         }) { contact in

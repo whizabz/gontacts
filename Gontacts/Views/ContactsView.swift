@@ -117,6 +117,7 @@ private struct SectionLetterHeader: View {
 
 /// The user's own contact, first in the list, like My Card in iOS Contacts.
 struct MyCardRow: View {
+    @Environment(AppModel.self) private var model
     let contact: Contact
 
     var body: some View {
@@ -126,6 +127,12 @@ struct MyCardRow: View {
                 Text(contact.displayName).font(.title3.weight(.semibold))
                 Text("My Card").font(.subheadline).foregroundStyle(.secondary)
             }
+            Spacer(minLength: 0)
+            // Your contact cards: the named sets of details you share.
+            Button { model.showCards = true } label: { Label("Contact Cards", systemImage: "person.text.rectangle") }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
         }
         .padding(.vertical, 4)
     }

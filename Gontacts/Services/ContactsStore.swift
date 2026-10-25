@@ -90,7 +90,7 @@ final class ContactsStore {
     /// The user's own contact, shown pinned at the top of Contacts. Never for the sample contacts.
     var myCard: Contact? {
         _ = revision
-        guard !isShowingSample else { return nil }
+        if isShowingSample { return index[SampleData.myCardID] }
         if let id = myCardID, let c = index[id] { return c }
         guard myCardID == nil, let email = accountEmail?.lowercased() else { return nil }
         return contacts.first { $0.emails.contains { $0.value.lowercased() == email } }

@@ -52,6 +52,7 @@ struct SettingsView: View {
                     NavigationLink("Why Gontacts?") { WhyThisAppExistsView() }
                 }
 
+                meSection
                 accountSection
             }
             .navigationTitle("Settings")
@@ -83,6 +84,33 @@ struct SettingsView: View {
 }
 
 extension SettingsView {
+    /// My Card, and below it the contact cards you share from it (only once a My Card is chosen).
+    @ViewBuilder
+    fileprivate var meSection: some View {
+        if model.store.isShowingSample || model.store.canSync {
+            Section {
+                if model.store.isShowingSample {
+                    LabeledContent("My Card", value: model.store.myCard?.displayName ?? "None")
+                } else {
+                    NavigationLink {
+                        MyCardPicker()
+                    } label: {
+                        LabeledContent("My Card", value: model.store.myCard?.displayName ?? "None")
+                    }
+                }
+                if let card = model.store.myCard {
+                    NavigationLink {
+                        ContactCardsView()
+                    } label: {
+                        let count = model.cards.cards.count + 1
+                        LabeledContent("Contact Cards", value: "\(count) \(count == 1 ? "card" : "cards")")
+                    }
+                    .id(card.id)
+                }
+            } header: { Text("Me") }
+        }
+    }
+
     @ViewBuilder
     fileprivate var accountSection: some View {
         if model.store.mode == .demo {
@@ -118,11 +146,6 @@ extension SettingsView {
                         LabeledContent("Waiting to sync") {
                             Text("\(model.store.pending.count) \(model.store.pending.count == 1 ? "change" : "changes")")
                         }
-                    }
-                    NavigationLink {
-                        MyCardPicker()
-                    } label: {
-                        LabeledContent("My Card", value: model.store.myCard?.displayName ?? "None")
                     }
                     Button("Sync Now") { Task { await model.store.flushPending(); await model.store.sync() } }
                         .disabled(model.store.isSyncing)

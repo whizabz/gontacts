@@ -12,6 +12,7 @@ final class AppModel {
     static weak var current: AppModel?
     let store = ContactsStore()
     let settings = ReminderSettings()
+    let cards: ContactCardStore
 
     /// Which list the segmented control at the top is showing.
     var homeMode: HomeMode = .contacts
@@ -21,6 +22,8 @@ final class AppModel {
     /// Set by the contact context menu; HomeView shows the Share Contact screen / delete confirmation.
     var shareRequest: Contact?
     var deleteRequest: Contact?
+    /// Set by the card button on My Card; HomeView shows Contact Cards.
+    var showCards = false
     /// Set when a notification asks to open the wish composer for a contact.
     var wishRequestID: String?
 
@@ -29,6 +32,7 @@ final class AppModel {
     }
 
     init() {
+        cards = ContactCardStore(isDemo: { [store] in store.isShowingSample })
         hasOnboarded = UserDefaults.standard.bool(forKey: "hasOnboarded") && store.isSignedIn
         ReminderScheduler.registerCategories()
         AppModel.current = self
