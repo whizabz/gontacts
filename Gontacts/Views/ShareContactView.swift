@@ -90,14 +90,10 @@ struct ShareContactView: View {
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button(role: .cancel) { dismiss() } }
-            ToolbarItem(placement: .confirmationAction) {
-                Button(role: .confirm) { shareSelectedCard() }.disabled(selectedFields.isEmpty)
-            }
-            ToolbarItem(placement: .bottomBar) {
-                Button { qrFields = selectedFields; model.cards.lastUsedID = selectedCard; showQR = true } label: {
-                    Label("Share as QR Code", systemImage: "qrcode")
-                }
-                .disabled(selectedFields.isEmpty)
+        }
+        .safeAreaInset(edge: .bottom) {
+            ShareActions(disabled: selectedFields.isEmpty, share: shareSelectedCard) {
+                qrFields = selectedFields; model.cards.lastUsedID = selectedCard; showQR = true
             }
         }
     }
@@ -111,7 +107,9 @@ struct ShareContactView: View {
                     Text(summary).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 0)
-                if selectedCard == id { Image(systemName: "checkmark").fontWeight(.semibold).foregroundStyle(.tint) }
+                // Always takes up its space, so the text doesn't re-wrap when the tick moves.
+                Image(systemName: "checkmark").fontWeight(.semibold).foregroundStyle(.tint)
+                    .opacity(selectedCard == id ? 1 : 0)
             }
             .padding(.horizontal, 16).padding(.vertical, 12)
             .contentShape(.rect)
@@ -173,8 +171,18 @@ private struct CustomShareView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Only selected details are shared").font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
-                    .padding(.leading, 20).padding(.bottom, -8)
+                HStack {
+                    Text("Only selected details are shared").font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
+                    Spacer()
+                    Button(chosen == allFields ? "Deselect All" : "Select All") {
+                        chosen = chosen == allFields ? [] : allFields
+                    }
+                    .font(.footnote.weight(.semibold))
+                    // The label just swaps, with no animation.
+                    .contentTransition(.identity)
+                    .animation(nil, value: chosen == allFields)
+                }
+                .padding(.horizontal, 20).padding(.bottom, -8)
                 ShareFieldList(contact: contact, chosen: $chosen)
                 if isMyCard { saveSection }
             }
@@ -189,19 +197,19 @@ private struct CustomShareView: View {
             if isRoot {
                 ToolbarItem(placement: .cancellationAction) { Button(role: .cancel) { dismiss() } }
             }
+            // With the switch on this saves the card; otherwise (or once it's saved) it just closes the screen.
             ToolbarItem(placement: .confirmationAction) {
-                Button(role: .confirm) { share() }.disabled(chosen.isEmpty)
-            }
-            ToolbarItem(placement: .bottomBar) {
-                Button(chosen == allFields ? "Deselect All Fields" : "Select All Fields") {
-                    chosen = chosen == allFields ? [] : allFields
+                let saving = pendingCard() != nil
+                Button(saving ? "Save" : "Done") {
+                    if saving { saveCard() } else { dismiss() }
                 }
+                .fontWeight(.semibold)
+                .contentTransition(.identity)
+                .disabled(saving && chosen.isEmpty)
             }
-            ToolbarSpacer(.flexible, placement: .bottomBar)
-            ToolbarItem(placement: .bottomBar) {
-                Button { saveCard(); onQR(chosen) } label: { Label("Share as QR Code", systemImage: "qrcode") }
-                    .disabled(chosen.isEmpty)
-            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            ShareActions(disabled: chosen.isEmpty, share: share) { saveCard(); onQR(chosen) }
         }
     }
 
@@ -258,6 +266,29 @@ private struct CustomShareView: View {
 
     /// Sharing also saves the card if the switch is still on, so it isn't lost.
     private func share() { onShare(chosen, pendingCard()) }
+}
+
+/// The two ways to send what's chosen: the iOS share sheet, or a QR code.
+private struct ShareActions: View {
+    let disabled: Bool
+    let share: () -> Void
+    let showQR: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Button(action: share) {
+                Label("Share", systemImage: "square.and.arrow.up").font(.headline).frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glassProminent)
+            Button(action: showQR) {
+                Label("Show QR Code", systemImage: "qrcode").font(.headline).frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glass)
+        }
+        .controlSize(.extraLarge)
+        .disabled(disabled)
+        .padding(.horizontal, 20).padding(.bottom, 8)
+    }
 }
 
 /// The groups of tickable details for a contact. Used by Share and by Edit Contact Card.
