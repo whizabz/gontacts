@@ -21,9 +21,9 @@
           "image-name" : "4-G.svg",
           "name" : "G",
           "position" : {
-            "scale" : 1,
+            "scale" : 1.05,
             "translation-in-points" : [
-              -16,
+              -15,
               0
             ]
           }
@@ -41,9 +41,9 @@
           ],
           "name" : "Disc",
           "position" : {
-            "scale" : 1,
+            "scale" : 1.05,
             "translation-in-points" : [
-              -16,
+              -15,
               0
             ]
           }
