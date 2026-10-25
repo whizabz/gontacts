@@ -12,7 +12,7 @@ struct WhyThisAppExistsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Why This App Exists").font(.largeTitle.bold())
-                    Text("Apple and Google save dates without a year differently. Gontacts bridges that gap, so you can manage your Google contacts on iPhone and your year-less birthdays stay intact.")
+                    Text("Apple and Google store year-less dates differently. This causes issues with contacts stored in Google Contacts. Gontacts saves the day by speaking Google's language.")
                         .font(.title3).foregroundStyle(.secondary)
                     ComparisonCards(compact: true).padding(.top, 4)
                 }
@@ -41,27 +41,39 @@ struct ComparisonCards: View {
     var compact = false
 
     var body: some View {
-        VStack(spacing: compact ? 12 : 18) {
-            ContactCardSample(compact: compact, logo: AnyView(Image(systemName: "apple.logo").resizable().scaledToFit()),
-                              birthday: AnyView(
-                                VStack(alignment: .leading, spacing: 2) {
-                                    HStack(alignment: .firstTextBaseline, spacing: 14) {
-                                        Text("1604-11-26").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
-                                            .dateHighlight(delay: 0.5)
-                                        Text("(26 November)").font(.footnote).foregroundStyle(.secondary)
-                                    }
-                                    Text("X-APPLE-OMIT-YEAR=1604").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
-                                }))
+        VStack(spacing: compact ? 24 : 18) {
+            // Each card drifts a little as the phone is tilted, by different amounts so they seem to sit at
+            // different depths. The margin inside the host stops the shadow being clipped.
+            ParallaxHost(travel: 6) {
+                ContactCardSample(compact: compact, logo: AnyView(Image(systemName: "apple.logo").resizable().scaledToFit()),
+                                  birthday: AnyView(
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        HStack(alignment: .firstTextBaseline, spacing: 14) {
+                                            Text("1604-11-26").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
+                                                .dateHighlight(delay: 0.5)
+                                            Text("(26 November)").font(.footnote).foregroundStyle(.secondary)
+                                        }
+                                        Text("X-APPLE-OMIT-YEAR=1604").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+                                    }))
+                    .padding(Self.shadowMargin)
+            }
+            .padding(-Self.shadowMargin)
 
-            ContactCardSample(compact: compact, logo: AnyView(Image("GoogleG").resizable().scaledToFit()),
-                              birthday: AnyView(
-                                HStack(alignment: .firstTextBaseline, spacing: 14) {
-                                    Text("--1126").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
-                                        .dateHighlight(delay: 0.9)
-                                    Text("(26 November)").font(.footnote).foregroundStyle(.secondary)
-                                }))
+            ParallaxHost(travel: 10) {
+                ContactCardSample(compact: compact, logo: AnyView(Image("GoogleG").resizable().scaledToFit()),
+                                  birthday: AnyView(
+                                    HStack(alignment: .firstTextBaseline, spacing: 14) {
+                                        Text("--1126").font(.system(.footnote, design: .monospaced)).fontWeight(.semibold)
+                                            .dateHighlight(delay: 0.9)
+                                        Text("(26 November)").font(.footnote).foregroundStyle(.secondary)
+                                    }))
+                    .padding(Self.shadowMargin)
+            }
+            .padding(-Self.shadowMargin)
         }
     }
+
+    private static let shadowMargin: CGFloat = 20
 }
 
 /// A rolodex-style card for the sample contact. `logo` is the platform mark, drawn faintly in the top right corner.
@@ -91,15 +103,15 @@ private struct ContactCardSample: View {
         .font(compact ? .footnote : .subheadline)
         .padding(.horizontal, 16).padding(.top, compact ? 14 : 16).padding(.bottom, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 22))
+        // The card itself has the punch holes cut out of it, so whatever is behind shows through them.
+        .background {
+            PunchedCardShape().fill(Color(.secondarySystemGroupedBackground))
+                .shadow(color: .black.opacity(0.08), radius: 12, y: 6)
+        }
         // Faint platform logo, like a watermark.
         .overlay(alignment: .topTrailing) {
             logo.frame(width: 22, height: 22).foregroundStyle(.secondary).opacity(0.35).padding(16)
         }
-        // The notch on each side, as on a rolodex card.
-        .overlay(alignment: .leading) { Circle().fill(Color(.systemGroupedBackground)).frame(width: 16, height: 16).offset(x: -8) }
-        .overlay(alignment: .trailing) { Circle().fill(Color(.systemGroupedBackground)).frame(width: 16, height: 16).offset(x: 8) }
-        .shadow(color: .black.opacity(0.08), radius: 12, y: 6)
         .accessibilityElement(children: .combine)
     }
 
@@ -113,6 +125,22 @@ private struct ContactCardSample: View {
             }
             .padding(.vertical, compact ? 6 : 9)
         }
+    }
+}
+
+/// A rounded card with a half-round punch hole in the middle of each side, like a rolodex card. Drawn with the
+/// holes taken out of the outline, so they are real cutouts, not painted circles.
+private struct PunchedCardShape: Shape {
+    var cornerRadius: CGFloat = 22
+    var holeRadius: CGFloat = 8
+
+    func path(in rect: CGRect) -> Path {
+        var holes = Path()
+        for x in [rect.minX, rect.maxX] {
+            holes.addEllipse(in: CGRect(x: x - holeRadius, y: rect.midY - holeRadius, width: holeRadius * 2, height: holeRadius * 2))
+        }
+        // Subtract (not even-odd fill): the half of each circle outside the card must not be filled in.
+        return Path(roundedRect: rect, cornerRadius: cornerRadius, style: .continuous).subtracting(holes)
     }
 }
 
