@@ -331,6 +331,7 @@ struct ContactCardDetailView: View {
                         }
                         .controlSize(.extraLarge)
                         .disabled(fields.isEmpty)
+                        sharedDetails(contact, fields)
                     }
                     .padding(20)
                 }
@@ -345,6 +346,34 @@ struct ContactCardDetailView: View {
             } else {
                 // Deleted from the edit screen: nothing left to show.
                 Color.clear.onAppear { dismiss() }
+            }
+        }
+    }
+
+    /// The details this card shares: the rows ticked in Edit, grouped as they are there.
+    @ViewBuilder
+    private func sharedDetails(_ contact: Contact, _ fields: Set<ShareField>) -> some View {
+        let groups = contact.shareGroups.map { $0.filter { fields.contains($0.field) } }.filter { !$0.isEmpty }
+        if groups.isEmpty {
+            Text("Nothing is shared. Tap Edit to choose details.")
+                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("SHARED DETAILS").font(.footnote).foregroundStyle(.secondary).padding(.leading, 16)
+                ForEach(Array(groups.enumerated()), id: \.offset) { _, rows in
+                    VStack(spacing: 0) {
+                        ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                            if index > 0 { Divider().padding(.leading, 16) }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(row.label).font(.subheadline).foregroundStyle(.secondary)
+                                Text(row.value).foregroundStyle(.primary).multilineTextAlignment(.leading)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16).padding(.vertical, 12)
+                        }
+                    }
+                    .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 24))
+                }
             }
         }
     }
