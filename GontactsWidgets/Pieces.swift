@@ -11,7 +11,7 @@ struct AvatarCircle: View {
         let color = Theme.palette[row.seed % Theme.palette.count]
         Group {
             if let path = row.photoPath, let image = UIImage(contentsOfFile: path) {
-                Image(uiImage: image).resizable().scaledToFill()
+                Image(uiImage: image).resizable().widgetAccentedRenderingMode(.desaturated).scaledToFill()
             } else {
                 Circle().fill(color.opacity(0.16))
                     .overlay { Text(row.initials).font(.system(size: size * 0.37, weight: .semibold)).foregroundStyle(color) }
