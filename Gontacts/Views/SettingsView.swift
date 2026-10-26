@@ -139,7 +139,7 @@ extension SettingsView {
             }
         } else {
             Section {
-                LabeledContent("Account", value: model.store.accountEmail ?? "Google")
+                LabeledContent("Account", value: model.store.isDemoOverlay ? "Sample account" : (model.store.accountEmail ?? "Google"))
                 if model.store.canSync {
                     LabeledContent("Last synced") {
                         if model.store.isSyncing {
