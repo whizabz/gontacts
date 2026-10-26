@@ -13,6 +13,8 @@ struct SettingsView: View {
         @Bindable var settings = model.settings
         NavigationStack {
             Form {
+                meSection
+
                 Section {
                     Toggle("Birthdays", isOn: $settings.birthdays)
                     Toggle("Anniversaries", isOn: $settings.anniversaries)
@@ -28,7 +30,7 @@ struct SettingsView: View {
                     NavigationLink {
                         MutedPeopleView()
                     } label: {
-                        LabeledContent("Muted people", value: "\(settings.mutedIDs.count)")
+                        LabeledContent("Muted contacts", value: "\(settings.mutedIDs.count)")
                     }
                 } footer: {
                     if authStatus == .denied {
@@ -36,8 +38,6 @@ struct SettingsView: View {
                             Text("Notifications are turned off for Gontacts in iOS Settings.")
                             Button("Open iOS Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
                         }
-                    } else {
-                        Text("Reminders are scheduled on this device from the dates in your contacts.")
                     }
                 }
 
@@ -46,15 +46,16 @@ struct SettingsView: View {
                 } header: {
                     Text("Celebrations")
                 } footer: {
-                    Text("Shows confetti when you open a contact whose birthday or anniversary is today. It's always skipped when Reduce Motion is on in iOS Settings.")
+                    Text("Shows confetti when you open a contact whose birthday or anniversary is today. This follows your Reduce Motion accessibility setting.")
                 }
+
+                accountSection
+
+                showOffSection
 
                 Section {
                     NavigationLink("Why Gontacts?") { WhyThisAppExistsView() }
                 }
-
-                meSection
-                accountSection
             }
             .navigationTitle("Settings")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
@@ -126,7 +127,6 @@ extension SettingsView {
         if model.store.mode == .demo {
             Section {
                 LabeledContent("Contacts", value: "Sample contacts")
-                Button("Reset Sample Contacts") { confirmResetShowOff = true }
                 Button("Sign in with Google") {
                     Task {
                         await model.store.signInWithGoogle()
@@ -161,6 +161,27 @@ extension SettingsView {
                     Button("Sync Now") { Task { await model.store.flushPending(); await model.store.sync() } }
                         .disabled(model.store.isSyncing)
                 }
+                if !model.store.isDemoOverlay {
+                    Button("Sign Out", role: .destructive) { confirmSignOut = true }
+                }
+            } header: {
+                Text("Account")
+            } footer: {
+                if !model.store.isDemoOverlay {
+                    Text("Last synced is when Gontacts last downloaded your contacts from Google. Pull down on Contacts to sync again.")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    fileprivate var showOffSection: some View {
+        if model.store.mode == .demo {
+            Section {
+                Button("Reset Sample Contacts") { confirmResetShowOff = true }
+            }
+        } else if model.store.mode == .google {
+            Section {
                 Toggle("Show-off Mode", isOn: Binding(
                     get: { model.store.isDemoOverlay },
                     set: { on in
@@ -171,13 +192,10 @@ extension SettingsView {
                 if model.store.isDemoOverlay {
                     Button("Reset Sample Contacts") { confirmResetShowOff = true }
                 }
-                Button("Sign Out", role: .destructive) { confirmSignOut = true }
-            } header: {
-                Text("Account")
             } footer: {
                 Text(model.store.isDemoOverlay
                      ? "Showing sample contacts and events. Your Google contacts aren't touched, synced or used for reminders until you turn this off."
-                     : "Last synced is when Gontacts last downloaded your contacts from Google. Pull down on Contacts to sync again. Show-off Mode shows sample contacts so you can show off the app.")
+                     : "Show-off Mode shows sample contacts so you can show off the app.")
             }
         }
     }
@@ -201,10 +219,10 @@ struct MutedPeopleView: View {
         }
         .overlay {
             if muted.isEmpty {
-                ContentUnavailableView("No Muted People", systemImage: "bell", description: Text("Mute reminders from a contact's More menu."))
+                ContentUnavailableView("No Muted Contacts", systemImage: "bell", description: Text("Mute reminders from a contact's More menu."))
             }
         }
-        .navigationTitle("Muted People")
+        .navigationTitle("Muted Contacts")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
