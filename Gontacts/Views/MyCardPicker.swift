@@ -83,7 +83,7 @@ struct MyCardSetupView: View {
                 } label: {
                     Text("Use this contact").font(.headline).frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glassProminent).controlSize(.extraLarge)
+                .buttonStyle(.glassProminent).prominentButtonShadow().controlSize(.extraLarge)
                 Button { choosing = true } label: {
                     Text("Choose a different contact").font(.headline).frame(maxWidth: .infinity)
                 }
@@ -92,7 +92,7 @@ struct MyCardSetupView: View {
                 Button { choosing = true } label: {
                     Text("Choose my contact").font(.headline).frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glassProminent).controlSize(.extraLarge)
+                .buttonStyle(.glassProminent).prominentButtonShadow().controlSize(.extraLarge)
             }
         }
         .padding(.horizontal, 24).padding(.bottom, 12)

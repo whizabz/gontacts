@@ -24,7 +24,7 @@ struct WhyThisAppExistsView: View {
                 Button(action: onContinue) {
                     Text("Got it").font(.headline).frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glassProminent).controlSize(.extraLarge)
+                .buttonStyle(.glassProminent).prominentButtonShadow().controlSize(.extraLarge)
                 .padding(.horizontal, 24).padding(.bottom, 12)
                 .frame(maxWidth: 560)
             }

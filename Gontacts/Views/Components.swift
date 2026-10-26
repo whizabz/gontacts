@@ -61,3 +61,11 @@ extension String {
     /// "mobile" becomes "Mobile", but names that already have capitals, like "WhatsApp", are left alone.
     var displayLabel: String { self == lowercased() ? capitalized : self }
 }
+
+extension View {
+    /// The system draws a soft shadow under `.glass` buttons but not `.glassProminent` ones, so a
+    /// primary button next to a secondary one looks flat. This gives it the same lift.
+    func prominentButtonShadow() -> some View {
+        shadow(color: .black.opacity(0.18), radius: 10, y: 5)
+    }
+}

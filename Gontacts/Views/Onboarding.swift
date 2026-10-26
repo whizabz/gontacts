@@ -94,7 +94,7 @@ struct WelcomeView: View {
             Button(action: onContinue) {
                 Text("Get started").font(.headline).frame(maxWidth: .infinity)
             }
-            .buttonStyle(.glassProminent).controlSize(.extraLarge)
+            .buttonStyle(.glassProminent).prominentButtonShadow().controlSize(.extraLarge)
         }
         .padding(.horizontal, 24).padding(.bottom, 12)
         .frame(maxWidth: 560)
@@ -142,7 +142,7 @@ struct ConnectView: View {
             } label: {
                 Text("Continue with Google").font(.headline).frame(maxWidth: .infinity)
             }
-            .buttonStyle(.glassProminent).controlSize(.extraLarge)
+            .buttonStyle(.glassProminent).prominentButtonShadow().controlSize(.extraLarge)
             .disabled(working)
 
             Button {
@@ -204,7 +204,7 @@ struct ContactsAccessNeededView: View {
             } label: {
                 Text("Try again").font(.headline).frame(maxWidth: .infinity)
             }
-            .buttonStyle(.glassProminent).controlSize(.extraLarge)
+            .buttonStyle(.glassProminent).prominentButtonShadow().controlSize(.extraLarge)
             .disabled(working)
 
             Button {
@@ -274,7 +274,7 @@ struct ReminderOptInView: View {
             } label: {
                 Text("Turn on reminders").font(.headline).frame(maxWidth: .infinity)
             }
-            .buttonStyle(.glassProminent).controlSize(.extraLarge)
+            .buttonStyle(.glassProminent).prominentButtonShadow().controlSize(.extraLarge)
             Text("iOS will ask to allow notifications. You can change this in Settings.")
                 .font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity)
         }

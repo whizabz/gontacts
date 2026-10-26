@@ -118,7 +118,7 @@ struct WishView: View {
                                 .contentTransition(.symbolEffect(.replace))
                                 .font(.subheadline.weight(.semibold))
                         }
-                        .buttonStyle(.glassProminent)
+                        .buttonStyle(.glassProminent).prominentButtonShadow()
                         .controlSize(.regular)
                         .sensoryFeedback(.success, trigger: copied) { _, new in new }
                     }

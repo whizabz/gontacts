@@ -60,7 +60,7 @@ struct ContactDetailView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.glassProminent).controlSize(.large)
+                    .buttonStyle(.glassProminent).prominentButtonShadow().controlSize(.large)
                     .listRowBackground(Color.clear).listRowInsets(.init())
                 }
             }

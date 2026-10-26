@@ -319,23 +319,26 @@ struct ContactCardDetailView: View {
                             Text(contact.cardSummary(card.fields)).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         }
                         .padding(.top, 12)
-                        VStack(spacing: 12) {
-                            Button { share(contact, fields) } label: {
-                                Label("Share", systemImage: "square.and.arrow.up").font(.headline).frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.glassProminent)
-                            Button { showQR = true } label: {
-                                Label("Show QR Code", systemImage: "qrcode").font(.headline).frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.glass)
-                        }
-                        .controlSize(.extraLarge)
-                        .disabled(fields.isEmpty)
                         sharedDetails(contact, fields)
                     }
                     .padding(20)
                 }
                 .background(Color(.systemGroupedBackground))
+                .safeAreaInset(edge: .bottom) {
+                    VStack(spacing: 12) {
+                        Button { share(contact, fields) } label: {
+                            Label("Share", systemImage: "square.and.arrow.up").font(.headline).frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.glassProminent).prominentButtonShadow()
+                        Button { showQR = true } label: {
+                            Label("Show QR Code", systemImage: "qrcode").font(.headline).frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.glass)
+                    }
+                    .controlSize(.extraLarge)
+                    .disabled(fields.isEmpty)
+                    .padding(.horizontal, 20).padding(.bottom, 8)
+                }
                 .navigationTitle(card.name)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

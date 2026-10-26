@@ -279,7 +279,7 @@ private struct ShareActions: View {
             Button(action: share) {
                 Label("Share", systemImage: "square.and.arrow.up").font(.headline).frame(maxWidth: .infinity)
             }
-            .buttonStyle(.glassProminent)
+            .buttonStyle(.glassProminent).prominentButtonShadow()
             Button(action: showQR) {
                 Label("Show QR Code", systemImage: "qrcode").font(.headline).frame(maxWidth: .infinity)
             }
