@@ -46,8 +46,12 @@ struct ContactCardsView: View {
         let contact = model.store.myCard
         List {
             Section {
-                row(name: "Full contact", summary: "Everything · \(contact?.allShareFields.count ?? 0) details",
-                    symbol: "person.text.rectangle", color: 0, isDefault: true)
+                NavigationLink {
+                    ContactCardDetailView(cardID: ContactCard.fullID)
+                } label: {
+                    row(name: "Full contact", summary: "Everything · \(contact?.allShareFields.count ?? 0) details",
+                        symbol: "person.text.rectangle", color: 0, isDefault: true)
+                }
                 ForEach(model.cards.cards) { card in
                     NavigationLink {
                         ContactCardDetailView(cardID: card.id)
@@ -67,6 +71,8 @@ struct ContactCardsView: View {
         }
         .navigationTitle("Contact Cards")
         .navigationBarTitleDisplayMode(.inline)
+        // A QR widget opens straight onto its card.
+        .navigationDestination(item: Binding(get: { model.cardRequest }, set: { model.cardRequest = $0 })) { ContactCardDetailView(cardID: $0) }
         .toolbar {
             if inSheet {
                 ToolbarItem(placement: .cancellationAction) { Button(role: .close) { dismiss() } }
@@ -311,14 +317,15 @@ struct ContactCardDetailView: View {
 
     var body: some View {
         Group {
-            if let card = model.cards.card(cardID), let contact = model.store.myCard {
+            if let contact = model.store.myCard, let card = resolvedCard(for: contact) {
                 let fields = contact.shareFields(for: card.fields)
+                let isFull = cardID == ContactCard.fullID
                 ScrollView {
                     VStack(spacing: 20) {
                         VStack(spacing: 10) {
                             CardTile(symbol: card.symbol, colorIndex: card.colorIndex, size: 72)
                             Text(card.name).font(.title2.bold())
-                            Text(contact.cardSummary(card.fields)).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            Text(isFull ? "Everything · \(fields.count) details" : contact.cardSummary(card.fields)).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         }
                         .padding(.top, 12)
                         sharedDetails(contact, fields)
@@ -344,15 +351,24 @@ struct ContactCardDetailView: View {
                 .navigationTitle(card.name)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .primaryAction) { Button("Edit") { editing = true } }
+                    if !isFull { ToolbarItem(placement: .primaryAction) { Button("Edit") { editing = true } } }
                 }
-                .navigationDestination(isPresented: $showQR) { ContactQRView(contact: contact.keeping(fields)) }
+                .navigationDestination(isPresented: $showQR) { ContactQRView(contact: contact.keeping(fields), card: card) }
                 .sheet(isPresented: $editing) { ContactCardEditView(contact: contact, card: card) }
             } else {
                 // Deleted from the edit screen: nothing left to show.
                 Color.clear.onAppear { dismiss() }
             }
         }
+    }
+
+    /// The saved card, or the built-in Full contact, which shares everything and can't be edited.
+    private func resolvedCard(for contact: Contact) -> ContactCard? {
+        if cardID == ContactCard.fullID {
+            return ContactCard(id: ContactCard.fullID, name: "Full contact", symbol: "person.text.rectangle", colorIndex: 0,
+                               fields: contact.shareKeys(for: contact.allShareFields))
+        }
+        return model.cards.card(cardID)
     }
 
     /// The details this card shares: the rows ticked in Edit, grouped as they are there.

@@ -15,6 +15,7 @@ struct ShareContactView: View {
     @State private var showCustom = false
     @State private var showQR = false
     @State private var qrFields: Set<ShareField> = []
+    @State private var qrCard: ContactCard?
 
     init(contact: Contact, onShare: @escaping (URL) -> Void) {
         self.contact = contact
@@ -35,12 +36,12 @@ struct ShareContactView: View {
         NavigationStack {
             Group {
                 if cards.isEmpty {
-                    CustomShareView(contact: contact, isRoot: true, onShare: send, onQR: { qrFields = $0; showQR = true })
+                    CustomShareView(contact: contact, isRoot: true, onShare: send, onQR: { qrFields = $0; qrCard = $1; showQR = true })
                 } else {
                     cardList
                 }
             }
-            .navigationDestination(isPresented: $showQR) { ContactQRView(contact: contact.keeping(qrFields)) }
+            .navigationDestination(isPresented: $showQR) { ContactQRView(contact: contact.keeping(qrFields), card: qrCard) }
         }
         .onAppear {
             if let last = model.cards.lastUsedID, last == ContactCard.fullID || model.cards.card(last) != nil { selectedCard = last }
@@ -86,7 +87,7 @@ struct ShareContactView: View {
         .navigationTitle("Share Contact")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showCustom) {
-            CustomShareView(contact: contact, isRoot: false, onShare: send, onQR: { qrFields = $0; showQR = true })
+            CustomShareView(contact: contact, isRoot: false, onShare: send, onQR: { qrFields = $0; qrCard = $1; showQR = true })
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button(role: .cancel) { dismiss() } }
@@ -143,7 +144,7 @@ private struct CustomShareView: View {
     /// True when this is the first screen, so it has its own close button and the title "Share Contact".
     let isRoot: Bool
     let onShare: (Set<ShareField>, ContactCard?) -> Void
-    let onQR: (Set<ShareField>) -> Void
+    let onQR: (Set<ShareField>, ContactCard?) -> Void
 
     @State private var chosen: Set<ShareField>
     @State private var saveAsCard = false
@@ -151,8 +152,9 @@ private struct CustomShareView: View {
     @State private var pickingIcon = false
     /// Set once the card is saved, so the screen can say so.
     @State private var savedName: String?
+    @State private var savedCard: ContactCard?
 
-    init(contact: Contact, isRoot: Bool, onShare: @escaping (Set<ShareField>, ContactCard?) -> Void, onQR: @escaping (Set<ShareField>) -> Void) {
+    init(contact: Contact, isRoot: Bool, onShare: @escaping (Set<ShareField>, ContactCard?) -> Void, onQR: @escaping (Set<ShareField>, ContactCard?) -> Void) {
         self.contact = contact
         self.isRoot = isRoot
         self.onShare = onShare
@@ -209,7 +211,7 @@ private struct CustomShareView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            ShareActions(disabled: chosen.isEmpty, share: share) { saveCard(); onQR(chosen) }
+            ShareActions(disabled: chosen.isEmpty, share: share) { let card = pendingCard() ?? savedCard; saveCard(); onQR(chosen, card) }
         }
     }
 
@@ -258,6 +260,7 @@ private struct CustomShareView: View {
     private func saveCard() {
         guard let card = pendingCard() else { return }
         model.cards.save(card)
+        savedCard = card
         withAnimation {
             savedName = card.name
             saveAsCard = false

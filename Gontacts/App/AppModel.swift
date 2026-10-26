@@ -24,6 +24,8 @@ final class AppModel {
     var deleteRequest: Contact?
     /// Set by the card button on My Card; HomeView shows Contact Cards.
     var showCards = false
+    /// A contact card to open straight away in Contact Cards, e.g. from tapping a QR widget.
+    var cardRequest: UUID?
     /// Set when a notification asks to open the wish composer for a contact.
     var wishRequestID: String?
 
@@ -53,6 +55,24 @@ final class AppModel {
         homeMode = .contacts
         contactsSelection = contactID
         wishRequestID = wish ? contactID : nil
+    }
+
+    /// Your contact cards with the vCard each one shares, for the QR widgets.
+    var qrCardSnapshots: [QRCardSnapshot] {
+        guard let me = store.myCard else { return [] }
+        let full = QRCardSnapshot(id: QRCardSnapshot.fullID, name: "Full contact", symbol: "person.text.rectangle", colorIndex: 0,
+                                  vCard: me.keeping(me.allShareFields).vCard)
+        return [full] + cards.cards.map {
+            QRCardSnapshot(id: $0.id.uuidString, name: $0.name, symbol: $0.symbol, colorIndex: $0.colorIndex,
+                           vCard: me.keeping(me.shareFields(for: $0.fields)).vCard)
+        }
+    }
+
+    /// Opens Contact Cards on the card the widget names.
+    func open(cardID: String) {
+        homeMode = .contacts
+        cardRequest = cardID == QRCardSnapshot.fullID ? ContactCard.fullID : UUID(uuidString: cardID)
+        showCards = true
     }
 
     func rescheduleReminders() {

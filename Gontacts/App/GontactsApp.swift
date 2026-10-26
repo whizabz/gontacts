@@ -12,6 +12,7 @@ struct GontactsApp: App {
                 .environment(model)
                 .onOpenURL { url in
                     // Widgets open the app on a contact.
+                    if let id = WidgetStore.cardID(from: url) { model.open(cardID: id) }
                     if let id = WidgetStore.contactID(from: url) { model.open(contactID: id, wish: false) }
                 }
                 .onChange(of: scenePhase) { _, phase in
@@ -23,6 +24,7 @@ struct GontactsApp: App {
                         model.rescheduleReminders()
                     }
                 }
+                .task(id: model.qrCardSnapshots) { WidgetPublisher.publishCards(model.qrCardSnapshots) }
                 .onChange(of: model.store.sourceVersion) { _, _ in model.resetNavigation() }
                 .onChange(of: model.store.revision) { _, _ in
                     if model.hasOnboarded { model.rescheduleReminders() }

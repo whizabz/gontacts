@@ -195,10 +195,10 @@ final class QRCodeTests: XCTestCase {
         var c = Contact(id: "people/c9")
         c.givenName = "Ada"
         c.phones = [LabeledValue(label: "mobile", value: "+91 98765 43210")]
-        XCTAssertNotNil(ContactQRView.makeImage(from: c.vCard))
+        XCTAssertNotNil(QRCode.image(from: c.vCard))
 
         c.notes = String(repeating: "x", count: 4_000)
-        XCTAssertNil(ContactQRView.makeImage(from: c.vCard))
+        XCTAssertNil(QRCode.image(from: c.vCard))
     }
 
     func testQRCodeDecodesBackToTheVCard() throws {
@@ -206,7 +206,7 @@ final class QRCodeTests: XCTestCase {
         c.givenName = "Grace"
         c.familyName = "Hopper"
         c.emails = [LabeledValue(label: "work", value: "grace@example.com")]
-        let image = try XCTUnwrap(ContactQRView.makeImage(from: c.vCard))
+        let image = try XCTUnwrap(QRCode.image(from: c.vCard))
         let ci = try XCTUnwrap(CIImage(image: image))
         let detector = try XCTUnwrap(CIDetector(ofType: CIDetectorTypeQRCode, context: nil, options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]))
         let message = (detector.features(in: ci).first as? CIQRCodeFeature)?.messageString

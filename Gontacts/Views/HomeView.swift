@@ -62,7 +62,7 @@ struct HomeView: View {
                 }
             }
         }
-        .sheet(isPresented: $model.showCards) {
+        .sheet(isPresented: $model.showCards, onDismiss: { model.cardRequest = nil }) {
             NavigationStack { ContactCardsView(inSheet: true) }
         }
         .sheet(item: $model.shareRequest, onDismiss: {

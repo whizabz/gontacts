@@ -31,6 +31,12 @@ enum WidgetPublisher {
         }
     }
 
+    /// Hands the QR widgets your contact cards.
+    static func publishCards(_ cards: [QRCardSnapshot]) {
+        WidgetStore.writeQRCards(cards)
+        WidgetCenter.shared.reloadTimelines(ofKind: "ContactQR")
+    }
+
     /// People with a birthday or anniversary in the next six weeks (the most a widget shows), with a photo.
     private static func upcoming(_ contacts: [Contact]) -> [Contact] {
         let now = Date.now

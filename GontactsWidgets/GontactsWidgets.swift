@@ -6,6 +6,7 @@ struct GontactsWidgetsBundle: WidgetBundle {
     var body: some Widget {
         CelebrationsWidget()
         SpotlightWidget()
+        QRWidget()
     }
 }
 

@@ -1,4 +1,3 @@
-import CoreImage.CIFilterBuiltins
 import SwiftUI
 
 /// The ticked fields as a QR code. The Camera app reads a vCard QR code and offers to add the contact.
@@ -6,10 +5,10 @@ struct ContactQRView: View {
     /// A copy of the contact holding only the fields chosen on the Share Contact screen.
     let contact: Contact
 
-    /// A QR code holds roughly 2.9 KB at the lowest error correction; a vCard past that can't be encoded.
-    private static let maxBytes = 2_900
+    /// The contact card being shown, named under the code. Nil for a one-off pick of details.
+    var card: ContactCard?
 
-    private var qrImage: UIImage? { Self.makeImage(from: contact.vCard) }
+    private var qrImage: UIImage? { QRCode.image(from: contact.vCard) }
 
     var body: some View {
         VStack(spacing: 20) {
@@ -22,8 +21,14 @@ struct ContactQRView: View {
                     .background(.white, in: .rect(cornerRadius: 28))
                     .frame(maxWidth: 360)
                     .accessibilityLabel("QR code for \(contact.displayName)")
-                VStack(spacing: 4) {
-                    Text(contact.displayName).font(.title2.bold())
+                VStack(spacing: 10) {
+                    if let card {
+                        CardTile(symbol: card.symbol, colorIndex: card.colorIndex, size: 44)
+                        Text(card.name).font(.title2.bold())
+                        Text(contact.displayName).font(.headline).foregroundStyle(.secondary)
+                    } else {
+                        Text(contact.displayName).font(.title2.bold())
+                    }
                     Text("Scan with the Camera app to add this contact.").font(.subheadline).foregroundStyle(.secondary)
                 }
                 .multilineTextAlignment(.center)
@@ -46,18 +51,5 @@ struct ContactQRView: View {
                 }
             }
         }
-    }
-
-    /// Black-on-white QR image, scaled up crisply, or nil when the text is too long.
-    static func makeImage(from text: String) -> UIImage? {
-        let data = Data(text.utf8)
-        guard data.count <= maxBytes else { return nil }
-        let filter = CIFilter.qrCodeGenerator()
-        filter.message = data
-        filter.correctionLevel = "L"
-        guard let output = filter.outputImage else { return nil }
-        let scaled = output.transformed(by: CGAffineTransform(scaleX: 12, y: 12))
-        guard let cg = CIContext().createCGImage(scaled, from: scaled.extent) else { return nil }
-        return UIImage(cgImage: cg)
     }
 }

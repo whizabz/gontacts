@@ -12,6 +12,7 @@ enum WidgetStore {
     static var container: URL? { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) }
 
     private static var eventsFile: URL? { container?.appending(path: "widget-contacts.json") }
+    private static var cardsFile: URL? { container?.appending(path: "widget-qr-cards.json") }
     private static var photoDirectory: URL? { container?.appending(path: "widget-photos", directoryHint: .isDirectory) }
 
     static func openURL(for contactID: String) -> URL {
@@ -20,6 +21,21 @@ enum WidgetStore {
         c.host = "contact"
         c.queryItems = [URLQueryItem(name: "id", value: contactID)]
         return c.url ?? URL(string: "\(scheme)://contact")!
+    }
+
+    /// The QR widget opens the app on one of your contact cards with `gontacts://card?id=<card id>`.
+    static func cardURL(for cardID: String) -> URL {
+        var c = URLComponents()
+        c.scheme = scheme
+        c.host = "card"
+        c.queryItems = [URLQueryItem(name: "id", value: cardID)]
+        return c.url ?? URL(string: "\(scheme)://card")!
+    }
+
+    /// The card id in a `cardURL`, or nil when the URL isn't one.
+    static func cardID(from url: URL) -> String? {
+        guard url.scheme == scheme, url.host == "card" else { return nil }
+        return URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "id" }?.value
     }
 
     static func contactID(from url: URL) -> String? {
@@ -40,6 +56,19 @@ enum WidgetStore {
     static func read() -> [Contact] {
         guard let url = eventsFile, let data = try? Data(contentsOf: url) else { return [] }
         return (try? JSONDecoder().decode([Contact].self, from: data)) ?? []
+    }
+
+    // MARK: QR cards
+
+    /// The cards the QR widgets can show, each with the vCard its QR code holds.
+    static func writeQRCards(_ cards: [QRCardSnapshot]) {
+        guard let url = cardsFile, let data = try? JSONEncoder().encode(cards) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
+    static func readQRCards() -> [QRCardSnapshot] {
+        guard let url = cardsFile, let data = try? Data(contentsOf: url) else { return [] }
+        return (try? JSONDecoder().decode([QRCardSnapshot].self, from: data)) ?? []
     }
 
     // MARK: Photos
