@@ -79,10 +79,11 @@ struct ContactCardsView: View {
         .sheet(isPresented: $creating) {
             if let contact { ContactCardEditView(contact: contact, card: nil, defaultName: model.cards.nextDefaultName()) }
         }
-        .confirmationDialog("Delete this contact card?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
-                            titleVisibility: .visible, presenting: pendingDelete) { card in
-            Button("Delete \(card.name)", role: .destructive) { model.cards.delete(card.id) }
-        } message: { _ in Text("Your contact isn't changed.") }
+        .alert("Delete Contact Card?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
+               presenting: pendingDelete) { card in
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) { model.cards.delete(card.id) }
+        } message: { card in Text("This will delete “\(card.name)”. This can't be undone.") }
     }
 
     private func row(name: String, summary: String, symbol: String, color: Int, isDefault: Bool) -> some View {
@@ -171,12 +172,13 @@ struct ContactCardEditView: View {
                 ToolbarItem(placement: .confirmationAction) { Button(role: .confirm) { save() }.disabled(!canSave) }
             }
             .sheet(isPresented: $pickingIcon) { CardIconPicker(symbol: $symbol, colorIndex: $colorIndex) }
-            .confirmationDialog("Delete this contact card?", isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button("Delete Contact Card", role: .destructive) {
+            .alert("Delete Contact Card?", isPresented: $confirmDelete) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
                     if let card { model.cards.delete(card.id) }
                     dismiss()
                 }
-            } message: { Text("Your contact isn't changed.") }
+            } message: { Text("This will delete “\(card?.name ?? name)”. This can't be undone.") }
         }
     }
 
