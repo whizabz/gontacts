@@ -249,7 +249,7 @@ private struct CustomShareView: View {
         guard isMyCard, saveAsCard, savedName == nil else { return nil }
         var card = draft
         let name = draft.name.trimmingCharacters(in: .whitespaces)
-        card.name = name.isEmpty ? "New Card" : name
+        card.name = name.isEmpty ? model.cards.nextDefaultName() : name
         card.id = UUID()
         card.fields = contact.shareKeys(for: chosen)
         return card

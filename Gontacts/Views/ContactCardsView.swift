@@ -39,8 +39,8 @@ struct ContactCardsView: View {
     /// True when shown in its own sheet (from My Card), which needs a close button.
     var inSheet = false
 
-    @State private var editing: ContactCard?
     @State private var creating = false
+    @State private var pendingDelete: ContactCard?
 
     var body: some View {
         let contact = model.store.myCard
@@ -49,16 +49,17 @@ struct ContactCardsView: View {
                 row(name: "Full contact", summary: "Everything · \(contact?.allShareFields.count ?? 0) details",
                     symbol: "person.text.rectangle", color: 0, isDefault: true)
                 ForEach(model.cards.cards) { card in
-                    Button { editing = card } label: {
+                    NavigationLink {
+                        ContactCardDetailView(cardID: card.id)
+                    } label: {
                         row(name: card.name, summary: contact?.cardSummary(card.fields) ?? "", symbol: card.symbol, color: card.colorIndex, isDefault: false)
                     }
-                    .buttonStyle(.plain)
-                    .swipeActions {
-                        Button("Delete", role: .destructive) { model.cards.delete(card.id) }
+                    .swipeActions(allowsFullSwipe: false) {
+                        Button("Delete", role: .destructive) { pendingDelete = card }
                     }
                 }
             } header: {
-                Text("Each contact card shares only the details you choose. Tap one to edit it.")
+                Text("Each contact card shares only the details you choose. Tap one to share it or edit it.")
                     .textCase(nil).font(.subheadline).foregroundStyle(.secondary).padding(.bottom, 4)
             } footer: {
                 Text("Contact cards are saved on this phone. Share one from your card, or choose any when you tap Share.")
@@ -76,11 +77,12 @@ struct ContactCardsView: View {
             }
         }
         .sheet(isPresented: $creating) {
-            if let contact { ContactCardEditView(contact: contact, card: nil) }
+            if let contact { ContactCardEditView(contact: contact, card: nil, defaultName: model.cards.nextDefaultName()) }
         }
-        .sheet(item: $editing) { card in
-            if let contact { ContactCardEditView(contact: contact, card: card) }
-        }
+        .confirmationDialog("Delete this contact card?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
+                            titleVisibility: .visible, presenting: pendingDelete) { card in
+            Button("Delete \(card.name)", role: .destructive) { model.cards.delete(card.id) }
+        } message: { _ in Text("Your contact isn't changed.") }
     }
 
     private func row(name: String, summary: String, symbol: String, color: Int, isDefault: Bool) -> some View {
@@ -97,7 +99,6 @@ struct ContactCardsView: View {
                 Text(summary).font(.footnote).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            if !isDefault { Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary) }
         }
         .contentShape(.rect)
     }
@@ -117,10 +118,11 @@ struct ContactCardEditView: View {
     @State private var pickingIcon = false
     @State private var confirmDelete = false
 
-    init(contact: Contact, card: ContactCard?) {
+    /// `defaultName` is the suggested name for a new card.
+    init(contact: Contact, card: ContactCard?, defaultName: String = "") {
         self.contact = contact
         self.card = card
-        _name = State(initialValue: card?.name ?? "")
+        _name = State(initialValue: card?.name ?? defaultName)
         _symbol = State(initialValue: card?.symbol ?? "briefcase")
         _colorIndex = State(initialValue: card?.colorIndex ?? 1)
         _chosen = State(initialValue: card.map { contact.shareFields(for: $0.fields) } ?? contact.shareFields(for: ["name"]))
@@ -293,5 +295,63 @@ struct CardIconPicker: View {
             let matches = group.symbols.filter { $0.contains(q) || group.title.lowercased().contains(q) }
             return matches.isEmpty ? nil : (group.title, matches)
         }
+    }
+}
+
+/// One contact card: share it, show it as a QR code, or tap Edit to change it.
+struct ContactCardDetailView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    let cardID: UUID
+
+    @State private var editing = false
+    @State private var showQR = false
+
+    var body: some View {
+        Group {
+            if let card = model.cards.card(cardID), let contact = model.store.myCard {
+                let fields = contact.shareFields(for: card.fields)
+                ScrollView {
+                    VStack(spacing: 20) {
+                        VStack(spacing: 10) {
+                            CardTile(symbol: card.symbol, colorIndex: card.colorIndex, size: 72)
+                            Text(card.name).font(.title2.bold())
+                            Text(contact.cardSummary(card.fields)).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        }
+                        .padding(.top, 12)
+                        VStack(spacing: 12) {
+                            Button { share(contact, fields) } label: {
+                                Label("Share", systemImage: "square.and.arrow.up").font(.headline).frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.glassProminent)
+                            Button { showQR = true } label: {
+                                Label("Show QR Code", systemImage: "qrcode").font(.headline).frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.glass)
+                        }
+                        .controlSize(.extraLarge)
+                        .disabled(fields.isEmpty)
+                    }
+                    .padding(20)
+                }
+                .background(Color(.systemGroupedBackground))
+                .navigationTitle(card.name)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) { Button("Edit") { editing = true } }
+                }
+                .navigationDestination(isPresented: $showQR) { ContactQRView(contact: contact.keeping(fields)) }
+                .sheet(isPresented: $editing) { ContactCardEditView(contact: contact, card: card) }
+            } else {
+                // Deleted from the edit screen: nothing left to show.
+                Color.clear.onAppear { dismiss() }
+            }
+        }
+    }
+
+    private func share(_ contact: Contact, _ fields: Set<ShareField>) {
+        guard let url = try? contact.keeping(fields).writeVCardFile() else { return }
+        model.cards.lastUsedID = cardID
+        ShareSheet.present(url)
     }
 }

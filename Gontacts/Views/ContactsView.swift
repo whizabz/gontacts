@@ -129,10 +129,14 @@ struct MyCardRow: View {
             }
             Spacer(minLength: 0)
             // Your contact cards: the named sets of details you share.
-            Button { model.showCards = true } label: { Label("Contact Cards", systemImage: "person.text.rectangle") }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
+            Button { model.showCards = true } label: {
+                Image(systemName: "person.text.rectangle").font(.body.weight(.medium)).foregroundStyle(.tint)
+                    .frame(width: 40, height: 40)
+                    .background(Color.accentColor.opacity(0.12), in: .circle)
+                    .contentShape(.circle)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Contact Cards")
         }
         .padding(.vertical, 4)
     }

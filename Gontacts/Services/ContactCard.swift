@@ -84,6 +84,14 @@ final class ContactCardStore {
         persist()
     }
 
+    /// "Contact Card 1", or the next number up if that name is already taken.
+    func nextDefaultName() -> String {
+        let taken = Set(cards.map { $0.name.lowercased() })
+        var n = 1
+        while taken.contains("contact card \(n)") { n += 1 }
+        return "Contact Card \(n)"
+    }
+
     func card(_ id: UUID) -> ContactCard? { cards.first { $0.id == id } }
 
     private func persist() {
