@@ -92,6 +92,13 @@ final class ContactCardStore {
         return "Contact Card \(n)"
     }
 
+    /// Brings back the sample cards that come with Show-off mode.
+    func resetDemoCards() {
+        demoCards = Self.sampleCards()
+        if isDemo() { lastUsedID = nil }
+        persist()
+    }
+
     func card(_ id: UUID) -> ContactCard? { cards.first { $0.id == id } }
 
     private func persist() {

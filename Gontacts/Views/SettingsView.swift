@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @State private var authStatus: UNAuthorizationStatus = .notDetermined
     @State private var confirmSignOut = false
+    @State private var confirmResetShowOff = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -64,6 +65,14 @@ struct SettingsView: View {
                     Task { await ReminderScheduler.reschedule(contacts: [], settings: model.settings) }
                 }
             } message: { Text("Contacts stay in your Google account. Reminders on this device are removed.") }
+            .confirmationDialog("Reset Show-off data?", isPresented: $confirmResetShowOff, titleVisibility: .visible) {
+                Button("Reset", role: .destructive) {
+                    model.store.resetSampleData()
+                    model.cards.resetDemoCards()
+                    model.resetNavigation()
+                    model.rescheduleReminders()
+                }
+            } message: { Text("Sample contacts and cards go back to how they started. Your Google contacts aren't touched.") }
         }
         .task { authStatus = await ReminderScheduler.authorizationStatus() }
         .onChange(of: settings.birthdays) { _, _ in changed() }
@@ -116,6 +125,7 @@ extension SettingsView {
         if model.store.mode == .demo {
             Section {
                 LabeledContent("Contacts", value: "Sample contacts")
+                Button("Reset Show-off Data") { confirmResetShowOff = true }
                 Button("Sign in with Google") {
                     Task {
                         await model.store.signInWithGoogle()
@@ -150,20 +160,23 @@ extension SettingsView {
                     Button("Sync Now") { Task { await model.store.flushPending(); await model.store.sync() } }
                         .disabled(model.store.isSyncing)
                 }
-                Toggle("Demo Mode", isOn: Binding(
+                Toggle("Show-off", isOn: Binding(
                     get: { model.store.isDemoOverlay },
                     set: { on in
                         model.store.setDemoOverlay(on)
                         model.rescheduleReminders()
                     }
                 ))
+                if model.store.isDemoOverlay {
+                    Button("Reset Show-off Data") { confirmResetShowOff = true }
+                }
                 Button("Sign Out", role: .destructive) { confirmSignOut = true }
             } header: {
                 Text("Account")
             } footer: {
                 Text(model.store.isDemoOverlay
                      ? "Showing sample contacts and events. Your Google contacts aren't touched, synced or used for reminders until you turn this off."
-                     : "Last synced is when Gontacts last downloaded your contacts from Google. Pull down on Contacts to sync again. Demo Mode shows sample contacts so you can show off the app.")
+                     : "Last synced is when Gontacts last downloaded your contacts from Google. Pull down on Contacts to sync again. Show-off mode shows sample contacts so you can show off the app.")
             }
         }
     }

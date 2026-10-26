@@ -183,6 +183,15 @@ final class ContactsStore {
         persist()
     }
 
+    /// Puts the sample contacts back as they were first shown, undoing any edits, additions and deletions.
+    func resetSampleData() {
+        guard isShowingSample else { return }
+        sampleContacts = SampleData.contacts()
+        sourceVersion += 1
+        rebuild()
+        persist()
+    }
+
     func signOut() {
         auth.signOut()
         setMode(.signedOut)
