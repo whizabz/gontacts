@@ -39,9 +39,7 @@ enum QRCode {
             UIColor.black.setFill()
             for y in 0..<side {
                 for x in 0..<side where pixels[y * side + x] < 128 {
-                    let rect = CGRect(x: CGFloat(x) * module, y: CGFloat(y) * module, width: module, height: module)
-                    // The widget's code has softly rounded squares; the one in the app stays sharp.
-                    if modulesOnly { UIBezierPath(roundedRect: rect, cornerRadius: module * 0.3).fill() } else { ctx.fill(rect) }
+                    ctx.fill(CGRect(x: CGFloat(x) * module, y: CGFloat(y) * module, width: module, height: module))
                 }
             }
         }
