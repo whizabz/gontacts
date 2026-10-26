@@ -24,6 +24,21 @@ struct AvatarCircle: View {
     }
 }
 
+/// "Today", as a solid pill in the full-colour widget. The clear and tinted looks turn every fill white, which
+/// would hide the text, so there it is an outline with the text drawn over it.
+struct TodayPill: View {
+    @Environment(\.widgetRenderingMode) private var mode
+
+    var body: some View {
+        let label = Text("Today").font(.system(size: 12, weight: .semibold)).padding(.horizontal, 10).padding(.vertical, 4)
+        if mode == .fullColor {
+            label.foregroundStyle(Theme.accentOnAccent).background(Theme.accent, in: Capsule())
+        } else {
+            label.foregroundStyle(.primary).background { Capsule().strokeBorder(.primary, lineWidth: 1.5) }
+        }
+    }
+}
+
 struct DateTile: View {
     let date: Date
     var body: some View {

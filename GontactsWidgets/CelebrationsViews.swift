@@ -139,15 +139,12 @@ private struct ListRow: View {
                 }
                 Spacer(minLength: 6)
                 if isToday {
-                    Text("Today").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.accentOnAccent)
-                        .padding(.horizontal, 10).padding(.vertical, 4).background(Theme.accent, in: Capsule())
+                    TodayPill()
                 } else {
                     DateTile(date: row.date)
                 }
             }
-            .padding(.horizontal, isToday ? 8 : 0)
             .frame(maxHeight: .infinity)
-            .background { if isToday { RoundedRectangle(cornerRadius: 14).fill(Theme.accent.opacity(0.14)) } }
         }
         .buttonStyle(.plain)
     }

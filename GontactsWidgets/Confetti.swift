@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Soft, blurred confetti behind the content of a widget. Pieces are close (sharp, bright) or far (blurred, faint)
+/// Soft, blurred confetti behind the content of a widget. Pieces are close (sharp, bright) or far (blurred, faint), all kept light so they don't fight the text
 /// and gather toward the top right and the lower left edge, so text stays readable.
 struct ConfettiLayer: View {
     enum Density: Int { case none = 0, light = 8, rich = 14 }
@@ -33,7 +33,7 @@ struct ConfettiLayer: View {
                          w: size, h: [7, 9, 13, 4][kind] - (kind == 0 ? CGFloat(depth) : 0),
                          angle: rng.next() * 90 - 45,
                          blur: [1.5, 3, 5][Int(depth)],
-                         opacity: [0.85, 0.6, 0.4][Int(depth)] * (top ? 1 : 0.7),
+                         opacity: [0.85, 0.6, 0.4][Int(depth)] * (top ? 1 : 0.7) * 0.5,
                          color: i % Theme.palette.count,
                          kind: kind)
         }
