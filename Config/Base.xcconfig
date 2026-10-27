@@ -1,5 +1,5 @@
 // Create Config/Secrets.xcconfig (git-ignored) with:
 //   GOOGLE_CLIENT_ID = 1234567890-abcdef.apps.googleusercontent.com
-// Use an OAuth client of type "iOS" with bundle ID xyz.saltedchips.gontacts.
+// Use an OAuth client of type "iOS" with bundle ID xyz.saltedchips.folks.
 GOOGLE_CLIENT_ID =
 #include? "Secrets.xcconfig"

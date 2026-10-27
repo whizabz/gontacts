@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <!-- Dark appearance: same tabs, slightly deeper so they sit well on the charcoal cover -->
-  <rect x="860" y="0"       width="164" height="342" fill="#DB3B2F"/>
-  <rect x="860" y="341.33"  width="164" height="342" fill="#EBAE04"/>
-  <rect x="860" y="682.67"  width="164" height="341.33" fill="#2E9A4B"/>
+  <!-- Four index tabs along the top edge, flush against each other and the icon edges -->
+  <rect x="0"   y="0" width="256" height="150" fill="#DB3B2F"/>
+  <rect x="256" y="0" width="256" height="150" fill="#EBAE04"/>
+  <rect x="512" y="0" width="256" height="150" fill="#2E9A4B"/>
+  <rect x="768" y="0" width="256" height="150" fill="#3A76DB"/>
 </svg>

@@ -1,6 +1,6 @@
-# Gontacts
+# Folks
 
-A SwiftUI contacts app for iPhone, iPad and iPhone Duo that talks straight to Google Contacts (People API), with birthday and anniversary reminders. It exists because Apple Contacts mangles year-less dates when saving to Google: Apple writes `1604-11-26` plus `X-APPLE-OMIT-YEAR=1604`, Google writes `--1126`. Gontacts reads and writes Google's own format (`{month, day}` with no `year`), and treats a `1604`/`0` year as "no year".
+A SwiftUI contacts app for iPhone, iPad and iPhone Duo that talks straight to Google Contacts (People API), with birthday and anniversary reminders. It exists because Apple Contacts mangles year-less dates when saving to Google: Apple writes `1604-11-26` plus `X-APPLE-OMIT-YEAR=1604`, Google writes `--1126`. Folks reads and writes Google's own format (`{month, day}` with no `year`), and treats a `1604`/`0` year as "no year".
 
 ## Build
 
@@ -8,17 +8,17 @@ Requires Xcode 27 (iOS 26+ deployment target, Liquid Glass APIs).
 
 ```bash
 brew install xcodegen          # once
-xcodegen generate              # creates Gontacts.xcodeproj from project.yml
-open Gontacts.xcodeproj
+xcodegen generate              # creates Folks.xcodeproj from project.yml
+open Folks.xcodeproj
 ```
 
 If `xcodebuild` complains the active developer directory is Command Line Tools, prefix commands with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
 
-Run tests: `xcodebuild -scheme Gontacts -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test`
+Run tests: `xcodebuild -scheme Folks -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test`
 
 ## Google sign-in
 
-1. In Google Cloud Console, enable the **People API** and create an OAuth client of type **iOS** with bundle ID `xyz.saltedchips.gontacts`.
+1. In Google Cloud Console, enable the **People API** and create an OAuth client of type **iOS** with bundle ID `xyz.saltedchips.folks`.
 2. Create `Config/Secrets.xcconfig` (git-ignored):
    ```
    GOOGLE_CLIENT_ID = 1234567890-abcdef.apps.googleusercontent.com
@@ -29,10 +29,10 @@ Without a client ID the app still runs: "Use Sample Contacts" on the connect scr
 
 ## Layout
 
-- `Gontacts/Models`: `EventDate` (year optional), `Contact`, `EventTimeline` (Yesterday / Today / Tomorrow / This week / months), `SampleData`
-- `Gontacts/Services`: `GoogleAuth` (OAuth + PKCE, Keychain), `PeopleAPI`, `ContactsStore`, `ReminderScheduler` (local notifications), `ReminderSettings`
-- `Gontacts/Views`: Onboarding, Contacts, Contact detail (+ `ConfettiView`), Edit, Events, Wish, Settings
-- `GontactsTests`: date round-trip and timeline tests
+- `Folks/Models`: `EventDate` (year optional), `Contact`, `EventTimeline` (Yesterday / Today / Tomorrow / This week / months), `SampleData`
+- `Folks/Services`: `GoogleAuth` (OAuth + PKCE, Keychain), `PeopleAPI`, `ContactsStore`, `ReminderScheduler` (local notifications), `ReminderSettings`
+- `Folks/Views`: Onboarding, Contacts, Contact detail (+ `ConfettiView`), Edit, Events, Wish, Settings
+- `FolksTests`: date round-trip and timeline tests
 
 ## Not done yet
 

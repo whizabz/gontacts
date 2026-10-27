@@ -1,0 +1,119 @@
+{
+  "fill-specializations" : [
+    {
+      "value" : {
+        "automatic-gradient" : "srgb:0.93725,0.92941,0.89804,1.00000"
+      }
+    },
+    {
+      "appearance" : "dark",
+      "value" : {
+        "solid" : "srgb:0.09000,0.09000,0.10000,1.00000"
+      }
+    }
+  ],
+  "groups" : [
+    {
+      "blur-material" : null,
+      "layers" : [
+        {
+          "glass" : true,
+          "image-name" : "4-person.png",
+          "name" : "Person",
+          "position" : {
+            "scale" : 0.89,
+            "translation-in-points" : [
+              0,
+              17
+            ]
+          }
+        },
+        {
+          "glass" : false,
+          "hidden" : false,
+          "image-name-specializations" : [
+            {
+              "value" : "3-card.svg"
+            },
+            {
+              "appearance" : "dark",
+              "value" : "3-card-dark.svg"
+            }
+          ],
+          "name" : "Plate",
+          "position" : {
+            "scale" : 0.89,
+            "translation-in-points" : [
+              0,
+              17
+            ]
+          }
+        }
+      ],
+      "name" : "Group",
+      "position" : {
+        "scale" : 1.35,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "refractivity" : {
+        "depth" : 0,
+        "enabled" : false,
+        "strength" : 0.5
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name-specializations" : [
+            {
+              "value" : "1-tabs.svg"
+            },
+            {
+              "appearance" : "dark",
+              "value" : "1-tabs-dark.svg"
+            }
+          ],
+          "name" : "Tabs",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              -32
+            ]
+          }
+        }
+      ],
+      "refractivity" : {
+        "depth" : 0,
+        "enabled" : false,
+        "strength" : 0.5
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

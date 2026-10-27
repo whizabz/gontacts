@@ -1,4 +1,4 @@
-name: Gontacts
+name: Folks
 options:
   bundleIdPrefix: xyz.saltedchips
   deploymentTarget:
@@ -17,22 +17,23 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     GENERATE_INFOPLIST_FILE: NO
 targets:
-  Gontacts:
+  Folks:
     type: application
     platform: iOS
     sources:
-      - Gontacts
+      - Folks
     dependencies:
-      - target: GontactsWidgets
+      - target: FolksWidgets
     entitlements:
-      path: Gontacts/Gontacts.entitlements
+      path: Folks/Folks.entitlements
       properties:
-        com.apple.security.application-groups: [group.xyz.saltedchips.gontacts]
+        com.apple.security.application-groups: [group.xyz.saltedchips.folks]
     info:
-      path: Gontacts/Info.plist
+      path: Folks/Info.plist
       properties:
-        CFBundleDisplayName: Gontacts
+        CFBundleDisplayName: Folks
         GoogleClientID: $(GOOGLE_CLIENT_ID)
+        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
@@ -47,56 +48,56 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         LSApplicationQueriesSchemes: [sms, mailto, tel, whatsapp, tg, sgnl]
         CFBundleURLTypes:
-          - CFBundleURLName: xyz.saltedchips.gontacts
-            CFBundleURLSchemes: [gontacts]
+          - CFBundleURLName: xyz.saltedchips.folks
+            CFBundleURLSchemes: [folks]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: xyz.saltedchips.gontacts
+        PRODUCT_BUNDLE_IDENTIFIER: xyz.saltedchips.folks
         DEVELOPMENT_TEAM: YDBF8P8UF4
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1,2"
-        ASSETCATALOG_COMPILER_APPICON_NAME: Gontacts
+        ASSETCATALOG_COMPILER_APPICON_NAME: Folks
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-  GontactsWidgets:
+  FolksWidgets:
     type: app-extension
     platform: iOS
     sources:
-      - GontactsWidgets
-      - Gontacts/Models
-      - Gontacts/Shared
+      - FolksWidgets
+      - Folks/Models
+      - Folks/Shared
     info:
-      path: GontactsWidgets/Info.plist
+      path: FolksWidgets/Info.plist
       properties:
-        CFBundleDisplayName: Gontacts
+        CFBundleDisplayName: Folks
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:
-      path: GontactsWidgets/GontactsWidgets.entitlements
+      path: FolksWidgets/FolksWidgets.entitlements
       properties:
-        com.apple.security.application-groups: [group.xyz.saltedchips.gontacts]
+        com.apple.security.application-groups: [group.xyz.saltedchips.folks]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: xyz.saltedchips.gontacts.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: xyz.saltedchips.folks.widgets
         DEVELOPMENT_TEAM: YDBF8P8UF4
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1,2"
         SKIP_INSTALL: YES
-  GontactsTests:
+  FolksTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - GontactsTests
+      - FolksTests
     dependencies:
-      - target: Gontacts
+      - target: Folks
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: xyz.saltedchips.gontacts.tests
+        PRODUCT_BUNDLE_IDENTIFIER: xyz.saltedchips.folks.tests
         GENERATE_INFOPLIST_FILE: YES
 schemes:
-  Gontacts:
+  Folks:
     build:
       targets:
-        Gontacts: all
+        Folks: all
     test:
       targets:
-        - GontactsTests
+        - FolksTests
