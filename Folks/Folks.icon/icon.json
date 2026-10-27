@@ -29,7 +29,7 @@
           }
         },
         {
-          "glass" : false,
+          "glass" : true,
           "hidden" : false,
           "image-name-specializations" : [
             {
