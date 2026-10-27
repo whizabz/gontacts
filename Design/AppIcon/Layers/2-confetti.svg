@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Soft, sparse confetti like the widgets: near pieces sharper and brighter, far pieces blurred and faint -->
+  <defs>
+    <filter id="b0" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.2"/></filter>
+    <filter id="b1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5"/></filter>
+    <filter id="b2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+  </defs>
+  <g transform="translate(741 312) rotate(42)" opacity="0.62" filter="url(#b0)"><rect x="-17.0" y="-7.5" width="34.0" height="15.0" rx="3" fill="#EA4335"/></g>
+  <g transform="translate(746 297) rotate(9)" opacity="0.42" filter="url(#b1)"><circle r="7.6499999999999995" fill="#FBBC05"/></g>
+  <g transform="translate(634 298) rotate(13)" opacity="0.28" filter="url(#b2)"><path d="M0 -9.1 L9.799999999999999 9.1 L-9.799999999999999 9.1 Z" fill="#34A853"/></g>
+  <g transform="translate(877 177) rotate(-20)" opacity="0.62" filter="url(#b0)"><rect x="-26.0" y="-4.5" width="52.0" height="9.0" rx="4.5" fill="#4285F4"/></g>
+  <g transform="translate(596 385) rotate(19)" opacity="0.42" filter="url(#b1)"><rect x="-14.45" y="-6.375" width="28.9" height="12.75" rx="3" fill="#EA4335"/></g>
+  <g transform="translate(577 435) rotate(46)" opacity="0.28" filter="url(#b2)"><circle r="6.3" fill="#FBBC05"/></g>
+  <g transform="translate(822 329) rotate(-34)" opacity="0.62" filter="url(#b0)"><path d="M0 -13.0 L14.0 13.0 L-14.0 13.0 Z" fill="#34A853"/></g>
+  <g transform="translate(87 312) rotate(-44)" opacity="0.42" filter="url(#b1)"><rect x="-22.099999999999998" y="-3.8249999999999997" width="44.199999999999996" height="7.6499999999999995" rx="3.8249999999999997" fill="#4285F4"/></g>
+  <g transform="translate(167 246) rotate(-47)" opacity="0.28" filter="url(#b2)"><rect x="-11.899999999999999" y="-5.25" width="23.799999999999997" height="10.5" rx="3" fill="#EA4335"/></g>
+  <g transform="translate(293 291) rotate(34)" opacity="0.62" filter="url(#b0)"><circle r="9.0" fill="#FBBC05"/></g>
+  <g transform="translate(319 337) rotate(-0)" opacity="0.42" filter="url(#b1)"><path d="M0 -11.049999999999999 L11.9 11.049999999999999 L-11.9 11.049999999999999 Z" fill="#34A853"/></g>
+  <g transform="translate(239 941) rotate(-22)" opacity="0.28" filter="url(#b2)"><rect x="-18.2" y="-3.15" width="36.4" height="6.3" rx="3.15" fill="#4285F4"/></g>
+  <g transform="translate(329 990) rotate(34)" opacity="0.62" filter="url(#b0)"><rect x="-17.0" y="-7.5" width="34.0" height="15.0" rx="3" fill="#EA4335"/></g>
+  <g transform="translate(884 928) rotate(-27)" opacity="0.42" filter="url(#b1)"><circle r="7.6499999999999995" fill="#FBBC05"/></g>
+  <g transform="translate(775 906) rotate(27)" opacity="0.28" filter="url(#b2)"><path d="M0 -9.1 L9.799999999999999 9.1 L-9.799999999999999 9.1 Z" fill="#34A853"/></g>
+</svg>
