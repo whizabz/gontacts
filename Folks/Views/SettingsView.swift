@@ -83,6 +83,22 @@ struct SettingsView: View {
                 Section {
                     NavigationLink("Why Folks?") { WhyThisAppExistsView() }
                 }
+
+                Section {
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                    } label: {
+                        HStack {
+                            Text("App Settings")
+                            Spacer()
+                            Image(systemName: "arrow.up.forward.app").foregroundStyle(.secondary)
+                        }
+                        .contentShape(.rect)
+                    }
+                    .foregroundStyle(.primary)
+                } footer: {
+                    Text("Manage notifications, badges, contacts access and language in the iOS Settings app.")
+                }
             }
             .navigationTitle("Settings")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }

@@ -54,8 +54,33 @@ enum ReminderScheduler {
                 requests.append((fire, UNNotificationRequest(identifier: "\(o.id)|\(lead)", content: content, trigger: trigger)))
             }
         }
-        for item in requests.sorted(by: { $0.fire < $1.fire }).prefix(60) {
+        // Keep a few of the 64 pending slots for icon-badge updates.
+        for item in requests.sorted(by: { $0.fire < $1.fire }).prefix(44) {
             try? await center.add(item.request)
+        }
+        await scheduleBadges(occurrences: occurrences, now: now, calendar: calendar)
+    }
+
+    /// The app icon badge shows how many events fall on today. The current value is set directly;
+    /// later days get a silent, badge-only notification just after midnight so it updates without opening the app.
+    private static func scheduleBadges(occurrences: [EventOccurrence], now: Date, calendar: Calendar) async {
+        let perDay = Dictionary(grouping: occurrences, by: { calendar.startOfDay(for: $0.date) }).mapValues(\.count)
+        let today = calendar.startOfDay(for: now)
+        try? await center.setBadgeCount(perDay[today] ?? 0)
+
+        var changes: [(day: Date, count: Int)] = []
+        for day in perDay.keys.sorted() where day > today {
+            changes.append((day, perDay[day] ?? 0))
+            // Clear the day after, unless that day has events of its own.
+            if let next = calendar.date(byAdding: .day, value: 1, to: day), perDay[next] == nil { changes.append((next, 0)) }
+        }
+        for change in changes.prefix(18) {
+            guard let fire = calendar.date(bySettingHour: 0, minute: 1, second: 0, of: change.day), fire > now else { continue }
+            let content = UNMutableNotificationContent()
+            content.badge = NSNumber(value: change.count)
+            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+            try? await center.add(UNNotificationRequest(identifier: "badge|\(Int(change.day.timeIntervalSince1970))", content: content, trigger: trigger))
         }
     }
 
