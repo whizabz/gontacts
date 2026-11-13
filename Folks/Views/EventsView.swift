@@ -74,6 +74,7 @@ struct EventsList: View {
                     }
                 }
             }
+            .environment(\.defaultMinListRowHeight, Platform.isMac ? 60 : 0)
             .background(ScrollViewHandle(box: scrollHandle))
             .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollTracker.offsetY = y }
             .onScrollGeometryChange(for: ScrollRelation.self) { geo in
@@ -153,7 +154,7 @@ struct EventRow: View {
                     .font(.footnote).foregroundStyle(Color(.secondaryLabel))
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, Platform.isMac ? 8 : 2)   // more room between rows on the Mac
     }
 }
 

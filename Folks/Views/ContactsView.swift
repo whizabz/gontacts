@@ -31,6 +31,7 @@ struct ContactRow: View {
                     .accessibilityLabel("Event today")
             }
         }
+        .padding(.vertical, Platform.isMac ? 5 : 0)   // more room between rows on the Mac
     }
 }
 
@@ -85,6 +86,7 @@ struct ContactsList: View {
         }
         .listStyle(.plain)
         .environment(\.defaultMinListHeaderHeight, 30)
+        .environment(\.defaultMinListRowHeight, Platform.isMac ? 60 : 0)
         .listSectionSpacing(.compact)
         .listSectionIndexVisibility(sort == .name && !Platform.isMac ? .visible : .hidden)
         .refreshable { await model.store.sync() }
@@ -119,7 +121,7 @@ private struct SectionLetterHeader: View {
         }
         .padding(.top, -6)
         // On the Mac the letter stays pinned at the top while rows scroll under it, so it needs a solid background.
-        .background { if Platform.isMac { Color.macSidebar.padding(.horizontal, -24).padding(.vertical, -12) } }
+        .background { if Platform.isMac { Color.macSidebar.padding(.horizontal, -24).padding(.top, -12) } }
         .accessibilityAddTraits(.isHeader)
     }
 }
