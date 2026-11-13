@@ -86,7 +86,7 @@ struct ContactsList: View {
         .listStyle(.plain)
         .environment(\.defaultMinListHeaderHeight, 30)
         .listSectionSpacing(.compact)
-        .listSectionIndexVisibility(sort == .name ? .visible : .hidden)
+        .listSectionIndexVisibility(sort == .name && !Platform.isMac ? .visible : .hidden)
         .refreshable { await model.store.sync() }
         .toolbar {
             if showsSortInToolbar {

@@ -10,3 +10,14 @@ private struct IPadSheetStaysOpen: ViewModifier {
     // The device idiom, not the size class: a form sheet on iPad reports a compact width.
     func body(content: Content) -> some View { content.interactiveDismissDisabled(UIDevice.current.userInterfaceIdiom == .pad) }
 }
+
+enum Platform {
+    /// True when running as the Mac Catalyst app.
+    static var isMac: Bool {
+        #if targetEnvironment(macCatalyst)
+        true
+        #else
+        false
+        #endif
+    }
+}

@@ -78,13 +78,8 @@ struct HomeView: View {
         @Bindable var model = model
         return NavigationSplitView {
             list(for: model.homeMode, sortInToolbar: false, searchable: false)
-                .safeAreaBar(edge: .top, spacing: 0) {
-                    if model.homeMode == .contacts { ContactsListHeader().padding(.top, sidebarFloats ? 24 : 20).padding(.bottom, 4) }
-                }
-                .safeAreaBar(edge: .bottom, spacing: 0) {
-                    SidebarBottomBar(query: $query, prompt: "Search",
-                                     onSettings: { showSettings = true }, onNew: { showNew = true })
-                }
+                .modifier(SidebarBars(query: $query, mode: model.homeMode, topPadding: sidebarFloats ? 24 : 20,
+                                      onSettings: { showSettings = true }, onNew: { showNew = true }))
                 // Exactly the iPhone control: the toolbar's segmented picker, with the same glass treatment.
                 .background {
                     // Where the sidebar sits tells us if iPadOS floats it as a panel or runs it edge to edge.
@@ -94,6 +89,7 @@ struct HomeView: View {
                     .ignoresSafeArea()
                 }
                 .toolbar(removing: .sidebarToggle)
+                .modifier(MacScrollEdge())
                 .toolbar {
                     ToolbarItem(placement: .principal) {
                         Picker("View", selection: $model.homeMode) {
@@ -241,5 +237,42 @@ private struct SidebarBottomBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
+    }
+}
+
+
+/// On the Mac the translucent band under the toolbar grows into a tall blur as the list scrolls; keep it a thin edge.
+private struct MacScrollEdge: ViewModifier {
+    func body(content: Content) -> some View {
+        if Platform.isMac { content.scrollEdgeEffectStyle(.hard, for: .top) } else { content }
+    }
+}
+
+/// The sidebar's header (sort control) and bottom bar (settings, search, add). On iPad they're system bars that blur
+/// content under them; on the Mac that blur covered the whole list, so there they are plain insets.
+private struct SidebarBars: ViewModifier {
+    @Binding var query: String
+    let mode: HomeMode
+    let topPadding: CGFloat
+    let onSettings: () -> Void
+    let onNew: () -> Void
+
+    @ViewBuilder private var header: some View {
+        if mode == .contacts { ContactsListHeader().padding(.top, topPadding).padding(.bottom, 4) }
+    }
+    private var bottom: some View {
+        SidebarBottomBar(query: $query, prompt: "Search", onSettings: onSettings, onNew: onNew)
+    }
+
+    func body(content: Content) -> some View {
+        if Platform.isMac {
+            content
+                .safeAreaInset(edge: .top, spacing: 0) { header }
+                .safeAreaInset(edge: .bottom, spacing: 0) { bottom }
+        } else {
+            content
+                .safeAreaBar(edge: .top, spacing: 0) { header }
+                .safeAreaBar(edge: .bottom, spacing: 0) { bottom }
+        }
     }
 }
