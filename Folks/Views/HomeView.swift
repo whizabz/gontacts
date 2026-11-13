@@ -245,11 +245,10 @@ private struct SidebarBottomBar: View {
 private struct MacScrollEdge: ViewModifier {
     func body(content: Content) -> some View {
         if Platform.isMac {
-            // A solid panel behind the Contacts/Events control, so rows scrolling up don't show through it.
+            // No system toolbar background (it renders lighter than the list); `SidebarBars` fills the area instead.
             content
                 .scrollEdgeEffectHidden(true, for: .all)
-                .toolbarBackground(Color(.systemBackground), for: .navigationBar)
-                .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+                .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         } else { content }
     }
 }
@@ -273,7 +272,10 @@ private struct SidebarBars: ViewModifier {
     func body(content: Content) -> some View {
         if Platform.isMac {
             content
-                .safeAreaInset(edge: .top, spacing: 0) { header.background(Color(.systemBackground)) }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    // The fill runs up behind the toolbar, so the Contacts/Events control sits on the list's own colour.
+                    header.background(Color(.systemBackground).ignoresSafeArea(edges: .top))
+                }
                 .safeAreaInset(edge: .bottom, spacing: 0) { bottom.background(Color(.systemBackground)) }
         } else {
             content
