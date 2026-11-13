@@ -16,6 +16,8 @@ struct ContactDetailView: View {
     @State private var sharing = false
     /// The vCard chosen on the Share Contact screen, opened in the iOS share sheet once that screen has closed.
     @State private var pendingShare: URL?
+    /// Where the Share button is on screen, so the share sheet can point at it.
+    @State private var shareAnchor: CGRect?
     @State private var confirmDelete = false
     /// Bumped on every appearance so the confetti replays each time the contact is opened.
     @State private var confettiRun = 0
@@ -183,7 +185,7 @@ struct ContactDetailView: View {
             }
         }
         .sheet(isPresented: $sharing, onDismiss: {
-            if let url = pendingShare { pendingShare = nil; ShareSheet.present(url) }
+            if let url = pendingShare { pendingShare = nil; ShareSheet.present(url, from: shareAnchor) }
         }) {
             ShareContactView(contact: contact) { pendingShare = $0 }.iPadSheetStaysOpen()
         }
@@ -213,6 +215,7 @@ struct ContactDetailView: View {
     private func actions(_ contact: Contact, muted: Bool, syncing: Bool) -> some View {
         // Share is the main action (as a vCard, like iOS Contacts); Edit lives in the overflow menu.
         Button { sharing = true } label: { Label("Share", systemImage: "square.and.arrow.up") }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { shareAnchor = $0 }
         Menu {
             Button("Edit", systemImage: "pencil") { editing = true }.disabled(syncing)
             Toggle(isOn: Binding(get: { muted }, set: { setMuted($0, contact) })) {

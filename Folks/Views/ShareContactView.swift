@@ -391,18 +391,24 @@ struct ShareFieldList: View {
 /// Opens the standard iOS share sheet over whatever is on screen.
 @MainActor
 enum ShareSheet {
-    static func present(_ url: URL) {
+    /// `anchor` is the Share button's frame in window coordinates; the popover points at it.
+    static func present(_ url: URL, from anchor: CGRect? = nil) {
         guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.activationState == .foregroundActive }),
               var top = scene.keyWindow?.rootViewController else { return }
         while let next = top.presentedViewController { top = next }
         let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         // On iPad this is a popover anchored near the top right, not a sheet that a swipe pulls away.
-        if UIDevice.current.userInterfaceIdiom == .pad {
+        if UIDevice.current.userInterfaceIdiom == .pad || Platform.isMac {
             sheet.modalPresentationStyle = .popover
             sheet.popoverPresentationController?.permittedArrowDirections = .up
         }
-        sheet.popoverPresentationController?.sourceView = top.view
-        sheet.popoverPresentationController?.sourceRect = CGRect(x: top.view.bounds.maxX - 40, y: 60, width: 1, height: 1)
+        if let anchor, let window = scene.keyWindow {
+            sheet.popoverPresentationController?.sourceView = window
+            sheet.popoverPresentationController?.sourceRect = anchor
+        } else {
+            sheet.popoverPresentationController?.sourceView = top.view
+            sheet.popoverPresentationController?.sourceRect = CGRect(x: top.view.bounds.maxX - 40, y: 60, width: 1, height: 1)
+        }
         top.present(sheet, animated: true)
     }
 }
