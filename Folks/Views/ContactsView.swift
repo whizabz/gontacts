@@ -52,23 +52,32 @@ struct ContactsList: View {
         }.map { ($0, grouped[$0] ?? []) }
     }
 
+    private func select(_ id: String, _ enabled: Bool) -> CustomSelection {
+        CustomSelection(enabled: enabled, isToday: false, isSelected: model.contactsSelection == id, horizontalInset: 7) { model.contactsSelection = id }
+    }
+
     var body: some View {
         @Bindable var model = model
-        List(selection: $model.contactsSelection) {
+        // Mac: no system selection; rows draw the same rounded selection as the Events list.
+        let custom = Platform.isMac
+        List(selection: custom ? .constant(nil) : $model.contactsSelection) {
             if let card = model.store.myCard {
                 // Like iOS Contacts: no line above My Card, and none between it and the first letter.
                 MyCardRow(contact: card).tag(card.id).contactContextMenu(card)
+                    .modifier(select(card.id, custom))
                     .listRowSeparator(.hidden)
             }
             if sort == .recent {
                 ForEach(model.store.recentlyModified.filter { $0.id != model.store.myCard?.id }) { contact in
                     ContactRow(contact: contact, showModified: true).tag(contact.id).contactContextMenu(contact)
+                        .modifier(select(contact.id, custom))
                 }
             } else {
                 ForEach(sections, id: \.letter) { section in
                     Section {
                         ForEach(section.contacts) { contact in
                             ContactRow(contact: contact).tag(contact.id).contactContextMenu(contact)
+                                .modifier(select(contact.id, custom))
                                 // The full-width line under the letter replaces the first row's own top line.
                                 .listRowSeparator(contact.id == section.contacts.first?.id ? .hidden : .automatic, edges: .top)
                                 // ...and the last row ends the section without a line, as in iOS Contacts.

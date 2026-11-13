@@ -161,9 +161,12 @@ struct EventRow: View {
 
 /// Row background for the Events list: a rounded grey selection, and for today's row a purple tint that gains an
 /// outline when selected.
-private struct EventRowBackground: View {
+struct EventRowBackground: View {
     let isToday: Bool
     let isSelected: Bool
+    /// Events rows are inset from the cell edge, so the shape reaches out (-5.5); Contacts cells run edge to edge, so
+    /// it pulls in instead. Both land at the same x.
+    var horizontalInset: CGFloat = -5.5
 
     var body: some View {
         // iPad: a pill-like 28pt radius to match the system selection. Mac: a plain rounded rectangle.
@@ -175,15 +178,17 @@ private struct EventRowBackground: View {
                 else { shape.fill(Color(.systemFill)) }
             }
         }
-        .padding(.horizontal, -5.5)
+        .padding(.horizontal, horizontalInset)
     }
 }
 
-/// iPad: our own rounded selection background and tap handling (see `EventsList.body`). A no-op on iPhone.
-private struct CustomSelection: ViewModifier {
+/// Our own rounded selection background and tap handling, used by the Events list on iPad and by both lists on the Mac
+/// so they match. A no-op where `enabled` is false.
+struct CustomSelection: ViewModifier {
     let enabled: Bool
     let isToday: Bool
     let isSelected: Bool
+    var horizontalInset: CGFloat = -5.5
     let onTap: () -> Void
 
     func body(content: Content) -> some View {
@@ -192,7 +197,7 @@ private struct CustomSelection: ViewModifier {
                 .contentShape(.rect)
                 .onTapGesture(perform: onTap)
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
-                .listRowBackground(EventRowBackground(isToday: isToday, isSelected: isSelected))
+                .listRowBackground(EventRowBackground(isToday: isToday, isSelected: isSelected, horizontalInset: horizontalInset))
         } else {
             content
         }
