@@ -278,6 +278,7 @@ private struct SidebarBars: ViewModifier {
 
     @ViewBuilder private var header: some View {
         if mode == .contacts { ContactsListHeader().padding(.top, topPadding).padding(.bottom, 4) }
+        else if Platform.isMac { Color.clear.frame(height: 4) }   // keeps the fill behind the toolbar on Events too
     }
     private var bottom: some View {
         SidebarBottomBar(query: $query, prompt: "Search", onSettings: onSettings, onNew: onNew)

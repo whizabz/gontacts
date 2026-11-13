@@ -50,7 +50,7 @@ struct EventsList: View {
 
         // iPhone (compact): the system list selection drives navigation, as before. Regular width (iPad): no system
         // selection, because on a real iPad it draws a square accent ring and fill; rows draw their own instead.
-        let custom = sizeClass == .regular
+        let custom = Platform.isMac || sizeClass == .regular
 
         ScrollViewReader { proxy in
             List(selection: custom ? .constant(nil) : $model.eventsSelection) {
