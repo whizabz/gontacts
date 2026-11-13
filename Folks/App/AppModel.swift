@@ -39,8 +39,8 @@ final class AppModel {
         ReminderScheduler.registerCategories()
         AppModel.current = self
         ContactDirectory.store = store
-        AppDelegate.onNotification = { [weak self] contactID, wish in
-            self?.open(contactID: contactID, wish: wish)
+        AppDelegate.onNotification = { [weak self] contactID, eventKey, action in
+            self?.handleNotification(contactID: contactID, eventKey: eventKey, action: action)
         }
     }
 
@@ -49,6 +49,22 @@ final class AppModel {
         contactsSelection = nil
         eventsSelection = nil
         wishRequestID = nil
+    }
+
+    /// Handles a tap or action button on a reminder notification.
+    func handleNotification(contactID: String, eventKey: String?, action: String) {
+        switch action {
+        case ReminderSchedulerConstants.wishAction:
+            open(contactID: contactID, wish: true)
+        case ReminderSchedulerConstants.muteEventAction:
+            if let eventKey { settings.mutedEvents.insert(eventKey) }
+            rescheduleReminders()
+        case ReminderSchedulerConstants.muteContactAction:
+            settings.mutedIDs.insert(contactID)
+            rescheduleReminders()
+        default:
+            open(contactID: contactID, wish: false)
+        }
     }
 
     func open(contactID: String, wish: Bool) {
@@ -83,7 +99,7 @@ final class AppModel {
 }
 
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-    @MainActor static var onNotification: ((String, Bool) -> Void)?
+    @MainActor static var onNotification: ((_ contactID: String, _ eventKey: String?, _ action: String) -> Void)?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
@@ -96,11 +112,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         guard let id = response.notification.request.content.userInfo["contactID"] as? String else { return }
-        let wish = response.actionIdentifier == ReminderSchedulerConstants.wishAction
-        await MainActor.run { Self.onNotification?(id, wish) }
+        let eventKey = response.notification.request.content.userInfo["eventKey"] as? String
+        let action = response.actionIdentifier
+        await MainActor.run { Self.onNotification?(id, eventKey, action) }
     }
 }
 
 enum ReminderSchedulerConstants {
     static let wishAction = "WISH"
+    static let muteEventAction = "MUTE_EVENT"
+    static let muteContactAction = "MUTE_CONTACT"
 }

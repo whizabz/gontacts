@@ -62,6 +62,13 @@ struct ContactEvent: Hashable, Codable, Identifiable, Sendable {
     var label: String = ""
     var date: EventDate
 
+    /// Stable identity for muting: `id` is regenerated on every sync, so use the kind and label instead.
+    static func muteKey(contactID: String, kind: EventKind, label: String) -> String {
+        "\(contactID)|\(kind.rawValue)|\(kind == .other ? label : "")"
+    }
+
+    func muteKey(contactID: String) -> String { Self.muteKey(contactID: contactID, kind: kind, label: label) }
+
     var displayTitle: String {
         if kind == .other, !label.trimmingCharacters(in: .whitespaces).isEmpty { return label }
         return kind.title
@@ -145,9 +152,34 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
     static func blank() -> Contact { Contact(id: "new-\(UUID().uuidString)") }
     var isNew: Bool { id.hasPrefix("new-") }
 
-    var displayName: String {
+    /// The name as written on the card: prefix, given, middle, family, suffix.
+    /// With `preferNickname`, just the nickname when there is one, nothing else.
+    func name(preferNickname: Bool = false) -> String {
+        if preferNickname && !nickname.isEmpty { return nickname }
+        let core = [givenName, middleName, familyName]
+        let main = ([namePrefix] + core).filter { !$0.isEmpty }.joined(separator: " ")
+        if core.contains(where: { !$0.isEmpty }) {
+            return nameSuffix.isEmpty ? main : "\(main), \(nameSuffix)"
+        }
+        return fallbackName
+    }
+
+    /// Full name; what lists and detail screens show unless nicknames are preferred.
+    var displayName: String { name() }
+
+    /// Given and family name only. Used where space is tight and titles shouldn't be formal, like notifications.
+    var shortName: String {
         let name = [givenName, familyName].filter { !$0.isEmpty }.joined(separator: " ")
-        if !name.isEmpty { return name }
+        return name.isEmpty ? fallbackName : name
+    }
+
+    /// Name without prefix or suffix, used for sorting and the A–Z sections.
+    var sortName: String {
+        let name = [givenName, middleName, familyName].filter { !$0.isEmpty }.joined(separator: " ")
+        return name.isEmpty ? fallbackName : name
+    }
+
+    private var fallbackName: String {
         if !nickname.isEmpty { return nickname }
         if !organization.isEmpty { return organization }
         return emails.first?.value ?? phones.first?.value ?? "No Name"
@@ -156,7 +188,7 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
     var initials: String {
         let letters = [givenName, familyName].compactMap { $0.first }.map(String.init)
         if !letters.isEmpty { return letters.joined().uppercased() }
-        return displayName.first.map { String($0).uppercased() } ?? "?"
+        return sortName.first.map { String($0).uppercased() } ?? "?"
     }
 
     var subtitle: String {
@@ -165,7 +197,7 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
 
     /// Letter used for the A–Z list; "#" for anything non-alphabetic.
     var sectionLetter: String {
-        let key = displayName
+        let key = sortName
         guard let c = key.folding(options: .diacriticInsensitive, locale: .current).first?.uppercased(),
               c.unicodeScalars.first.map(CharacterSet.letters.contains) == true else { return "#" }
         return c
@@ -232,4 +264,12 @@ struct Contact: Hashable, Codable, Identifiable, Sendable {
         c.modified = edited.modified
         return c
     }
+}
+
+/// `@AppStorage` keys for the "prefer nicknames" display options.
+enum NamePreference {
+    /// Master switch; the list and detail options only apply while it is on, and both default to on.
+    static let enabled = "names.preferNicknames"
+    static let list = "names.nicknameInList"
+    static let detail = "names.nicknameInDetail"
 }

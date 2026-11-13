@@ -6,7 +6,11 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @State private var authStatus: UNAuthorizationStatus = .notDetermined
     @State private var confirmSignOut = false
+    @State private var testNotificationSent = false
     @State private var confirmResetShowOff = false
+    @AppStorage(NamePreference.enabled) private var preferNicknames = false
+    @AppStorage(NamePreference.list) private var nicknameInList = true
+    @AppStorage(NamePreference.detail) private var nicknameInDetail = true
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -30,7 +34,7 @@ struct SettingsView: View {
                     NavigationLink {
                         MutedPeopleView()
                     } label: {
-                        LabeledContent("Muted contacts", value: "\(settings.mutedIDs.count)")
+                        LabeledContent("Muted", value: "\(settings.mutedIDs.count + settings.mutedEvents.count)")
                     }
                 } footer: {
                     if authStatus == .denied {
@@ -39,6 +43,28 @@ struct SettingsView: View {
                             Button("Open iOS Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
                         }
                     }
+                }
+
+                if model.store.isShowingSample {
+                    Section {
+                        Button("Send Test Notification") { sendTestNotification() }
+                    } footer: {
+                        Text(testNotificationSent
+                             ? "Sent. It arrives in about 5 seconds. Lock your phone or leave the app to see it as a banner, then press and hold it for the actions."
+                             : "Sends a sample birthday reminder from a demo contact so you can try the notification and its actions.")
+                    }
+                }
+
+                Section {
+                    Toggle("Prefer nicknames", isOn: $preferNicknames.animation())
+                    if preferNicknames {
+                        Toggle("In the contact list", isOn: $nicknameInList)
+                        Toggle("In contact details", isOn: $nicknameInDetail)
+                    }
+                } header: {
+                    Text("Names")
+                } footer: {
+                    Text("Contacts with a nickname show only the nickname, without their other names. Everyone else shows their full name, including prefix, middle name and suffix.")
                 }
 
                 Section {
@@ -83,6 +109,15 @@ struct SettingsView: View {
         .onChange(of: settings.dayBefore) { _, _ in changed() }
         .onChange(of: settings.weekBefore) { _, _ in changed() }
         .onChange(of: settings.timeOfDay) { _, _ in changed() }
+    }
+
+    private func sendTestNotification() {
+        guard let contact = model.store.sorted.first(where: { $0.events.contains { $0.kind == .birthday } }) ?? model.store.sorted.first else { return }
+        Task {
+            let sent = await ReminderScheduler.sendTest(for: contact)
+            authStatus = await ReminderScheduler.authorizationStatus()
+            testNotificationSent = sent
+        }
     }
 
     private func changed() {
@@ -204,25 +239,66 @@ extension SettingsView {
 struct MutedPeopleView: View {
     @Environment(AppModel.self) private var model
 
+    /// A muted single reminder, decoded from its key ("contactID|kind|label").
+    private struct MutedEvent: Identifiable {
+        let key: String
+        let contact: Contact
+        let title: String
+        var id: String { key }
+    }
+
+    private var mutedEvents: [MutedEvent] {
+        model.settings.mutedEvents.compactMap { key in
+            let parts = key.split(separator: "|", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+            guard parts.count == 3, let contact = model.store.contact(id: parts[0]), let kind = EventKind(rawValue: parts[1]) else { return nil }
+            return MutedEvent(key: key, contact: contact, title: kind == .other && !parts[2].isEmpty ? parts[2] : kind.title)
+        }
+        .sorted { $0.contact.sortName.localizedStandardCompare($1.contact.sortName) == .orderedAscending }
+    }
+
     var body: some View {
         let muted = model.store.sorted.filter { model.settings.mutedIDs.contains($0.id) }
+        let events = mutedEvents
         List {
-            ForEach(muted) { c in
-                HStack(spacing: 12) { AvatarView(contact: c, size: 36); Text(c.displayName) }
-                    .swipeActions {
-                        Button("Unmute") {
-                            model.settings.mutedIDs.remove(c.id)
-                            model.rescheduleReminders()
-                        }.tint(.accentColor)
+            if !muted.isEmpty {
+                Section("All reminders") {
+                    ForEach(muted) { c in
+                        HStack(spacing: 12) { AvatarView(contact: c, size: 36); Text(c.displayName) }
+                            .swipeActions {
+                                Button("Unmute") {
+                                    model.settings.mutedIDs.remove(c.id)
+                                    model.rescheduleReminders()
+                                }.tint(.accentColor)
+                            }
                     }
+                }
+            }
+            if !events.isEmpty {
+                Section("Single reminders") {
+                    ForEach(events) { e in
+                        HStack(spacing: 12) {
+                            AvatarView(contact: e.contact, size: 36)
+                            VStack(alignment: .leading) {
+                                Text(e.contact.displayName)
+                                Text(e.title).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .swipeActions {
+                            Button("Unmute") {
+                                model.settings.mutedEvents.remove(e.key)
+                                model.rescheduleReminders()
+                            }.tint(.accentColor)
+                        }
+                    }
+                }
             }
         }
         .overlay {
-            if muted.isEmpty {
-                ContentUnavailableView("No Muted Contacts", systemImage: "bell", description: Text("Mute reminders from a contact's More menu."))
+            if muted.isEmpty && events.isEmpty {
+                ContentUnavailableView("Nothing Muted", systemImage: "bell", description: Text("Mute reminders from a contact's More menu or a reminder notification."))
             }
         }
-        .navigationTitle("Muted Contacts")
+        .navigationTitle("Muted")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

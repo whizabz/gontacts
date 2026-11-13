@@ -42,7 +42,7 @@ enum EventTimeline {
                 for year in years {
                     guard let date = event.date.date(inYear: year, calendar: calendar), date >= startDay, date <= endDay else { continue }
                     let age = event.date.year.map { year - $0 }
-                    result.append(EventOccurrence(contactID: contact.id, contactName: contact.displayName, event: event, date: date, years: (age ?? 0) > 0 ? age : nil))
+                    result.append(EventOccurrence(contactID: contact.id, contactName: contact.shortName, event: event, date: date, years: (age ?? 0) > 0 ? age : nil))
                 }
             }
         }

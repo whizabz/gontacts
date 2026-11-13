@@ -16,6 +16,8 @@ final class ReminderSettings {
     /// Minutes after midnight.
     var timeOfDay: Int { didSet { defaults.set(timeOfDay, forKey: "rs.time") } }
     var mutedIDs: Set<String> { didSet { defaults.set(Array(mutedIDs), forKey: "rs.muted") } }
+    /// Single events muted for a contact (see `ContactEvent.muteKey`), e.g. just their anniversary.
+    var mutedEvents: Set<String> { didSet { defaults.set(Array(mutedEvents), forKey: "rs.mutedEvents") } }
 
     var timeAsDate: Date {
         get { Calendar.current.date(bySettingHour: timeOfDay / 60, minute: timeOfDay % 60, second: 0, of: .now) ?? .now }
@@ -36,6 +38,7 @@ final class ReminderSettings {
         confetti = bool("rs.confetti", true)
         timeOfDay = d.object(forKey: "rs.time") as? Int ?? 9 * 60
         mutedIDs = Set(d.stringArray(forKey: "rs.muted") ?? [])
+        mutedEvents = Set(d.stringArray(forKey: "rs.mutedEvents") ?? [])
     }
 
     func isEnabled(_ kind: EventKind) -> Bool {

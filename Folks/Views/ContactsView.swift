@@ -10,17 +10,20 @@ struct ContactRow: View {
     @Environment(AppModel.self) private var model
     let contact: Contact
     var showModified = false
+    @AppStorage(NamePreference.enabled) private var nicknamesOn = false
+    @AppStorage(NamePreference.list) private var nicknameInList = true
+    private var preferNickname: Bool { nicknamesOn && nicknameInList }
 
     var body: some View {
         HStack(spacing: 12) {
             AvatarView(contact: contact, size: 40)
             if showModified, let modified = contact.modified {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(contact.displayName)
+                    Text(contact.name(preferNickname: preferNickname))
                     Text(modified.formatted(.relative(presentation: .named))).font(.caption).foregroundStyle(.secondary)
                 }
             } else {
-                Text(contact.displayName)
+                Text(contact.name(preferNickname: preferNickname))
             }
             Spacer(minLength: 0)
             if model.store.todayIDs.contains(contact.id) {
@@ -119,12 +122,15 @@ private struct SectionLetterHeader: View {
 struct MyCardRow: View {
     @Environment(AppModel.self) private var model
     let contact: Contact
+    @AppStorage(NamePreference.enabled) private var nicknamesOn = false
+    @AppStorage(NamePreference.list) private var nicknameInList = true
+    private var preferNickname: Bool { nicknamesOn && nicknameInList }
 
     var body: some View {
         HStack(spacing: 12) {
             AvatarView(contact: contact, size: 56)
             VStack(alignment: .leading, spacing: 2) {
-                Text(contact.displayName).font(.title3.weight(.semibold))
+                Text(contact.name(preferNickname: preferNickname)).font(.title3.weight(.semibold))
                 Text("My Card").font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)

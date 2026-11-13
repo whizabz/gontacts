@@ -367,7 +367,7 @@ final class ContactsStore {
 
     private func rebuild() {
         contacts = isShowingSample ? sampleContacts : liveContacts
-        sorted = contacts.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+        sorted = contacts.sorted { $0.sortName.localizedStandardCompare($1.sortName) == .orderedAscending }
         recentlyModified = sorted.sorted { ($0.modified ?? .distantPast) > ($1.modified ?? .distantPast) }
         index = Dictionary(contacts.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         searchKeys = Dictionary(contacts.map { ($0.id, Self.searchKey(for: $0)) }, uniquingKeysWith: { a, _ in a })

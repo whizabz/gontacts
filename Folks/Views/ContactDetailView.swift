@@ -16,6 +16,9 @@ struct ContactDetailView: View {
     @State private var confirmDelete = false
     /// Bumped on every appearance so the confetti replays each time the contact is opened.
     @State private var confettiRun = 0
+    @AppStorage(NamePreference.enabled) private var nicknamesOn = false
+    @AppStorage(NamePreference.detail) private var nicknameInDetail = true
+    private var preferNickname: Bool { nicknamesOn && nicknameInDetail }
 
     var body: some View {
         if let contact = model.store.contact(id: contactID) {
@@ -34,8 +37,11 @@ struct ContactDetailView: View {
             Section {
                 VStack(spacing: 6) {
                     AvatarView(contact: contact, size: 96)
-                    Text(contact.displayName).font(.title.bold()).multilineTextAlignment(.center).padding(.top, 6)
-                    if !contact.nickname.isEmpty { Text("“\(contact.nickname)”").foregroundStyle(.secondary) }
+                    Text(contact.name(preferNickname: preferNickname)).font(.title.bold()).multilineTextAlignment(.center).padding(.top, 6)
+                    if !contact.nickname.isEmpty {
+                        // Show whichever of the nickname / full name isn't already the headline.
+                        Text(preferNickname ? contact.displayName : "“\(contact.nickname)”").foregroundStyle(.secondary)
+                    }
                     if !contact.subtitle.isEmpty { Text(contact.subtitle).foregroundStyle(.secondary) }
                     if model.store.canSync {
                         syncStatus(contact)
