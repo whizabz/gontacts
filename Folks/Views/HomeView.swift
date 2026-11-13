@@ -241,10 +241,10 @@ private struct SidebarBottomBar: View {
 }
 
 
-/// On the Mac the translucent band under the toolbar grows into a tall blur as the list scrolls; keep it a thin edge.
+/// On the Mac the translucent band under the toolbar grows into a tall blur as the list scrolls; hide the scroll-edge effects there.
 private struct MacScrollEdge: ViewModifier {
     func body(content: Content) -> some View {
-        if Platform.isMac { content.scrollEdgeEffectStyle(.hard, for: .top) } else { content }
+        if Platform.isMac { content.scrollEdgeEffectHidden(true, for: .all) } else { content }
     }
 }
 
@@ -267,8 +267,8 @@ private struct SidebarBars: ViewModifier {
     func body(content: Content) -> some View {
         if Platform.isMac {
             content
-                .safeAreaInset(edge: .top, spacing: 0) { header }
-                .safeAreaInset(edge: .bottom, spacing: 0) { bottom }
+                .safeAreaInset(edge: .top, spacing: 0) { header.background(Color(.systemBackground)) }
+                .safeAreaInset(edge: .bottom, spacing: 0) { bottom.background(Color(.systemBackground)) }
         } else {
             content
                 .safeAreaBar(edge: .top, spacing: 0) { header }
