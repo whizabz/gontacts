@@ -44,6 +44,7 @@ struct HomeView: View {
             }
             .iPadSheetStaysOpen()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .folksNewContact)) { _ in showNew = true }
     }
 
     // MARK: Layouts
@@ -204,6 +205,7 @@ private struct SidebarBottomBar: View {
     let prompt: String
     let onSettings: () -> Void
     let onNew: () -> Void
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         HStack(spacing: 10) {
@@ -217,6 +219,7 @@ private struct SidebarBottomBar: View {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField(prompt, text: $query)
+                    .focused($searchFocused)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                 if !query.isEmpty {
@@ -237,6 +240,7 @@ private struct SidebarBottomBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
+        .onReceive(NotificationCenter.default.publisher(for: .folksFind)) { _ in searchFocused = true }
     }
 }
 

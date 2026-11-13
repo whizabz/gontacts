@@ -35,7 +35,25 @@ struct FolksApp: App {
                     Text(model.store.errorMessage ?? "")
                 }
         }
+        .commands {
+            // Menu bar items on the Mac (and shortcuts with an iPad keyboard).
+            CommandGroup(replacing: .newItem) {
+                Button("New Contact") { NotificationCenter.default.post(name: .folksNewContact, object: nil) }
+                    .keyboardShortcut("n")
+                    .disabled(!model.hasOnboarded)
+            }
+            CommandGroup(after: .textEditing) {
+                Button("Find") { NotificationCenter.default.post(name: .folksFind, object: nil) }
+                    .keyboardShortcut("f")
+                    .disabled(!model.hasOnboarded)
+            }
+        }
     }
+}
+
+extension Notification.Name {
+    static let folksNewContact = Notification.Name("folks.newContact")
+    static let folksFind = Notification.Name("folks.find")
 }
 
 struct RootView: View {
