@@ -126,6 +126,7 @@ extension Contact {
         var identity: [ShareRow] = []
         let name = [namePrefix, givenName, middleName, familyName, nameSuffix].filter { !$0.isEmpty }.joined(separator: " ")
         if !name.isEmpty { identity.append(ShareRow(field: .name, label: "Name", value: name, noun: "Name", key: "name")) }
+        if photoURL != nil { identity.insert(ShareRow(field: .photo, label: "Photo", value: "Profile photo", noun: "photo", key: "photo"), at: 0) }
         if !nickname.isEmpty { identity.append(ShareRow(field: .nickname, label: "Nickname", value: nickname, noun: "nickname", key: "nickname")) }
         let company = [organization, department].filter { !$0.isEmpty }.joined(separator: " · ")
         if !company.isEmpty { identity.append(ShareRow(field: .company, label: "Company", value: company, noun: "company", key: "company")) }

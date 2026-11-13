@@ -51,6 +51,7 @@ struct ContactDetailView: View {
                 .frame(maxWidth: .infinity)
                 .listRowBackground(Color.clear)
             }
+            .listSectionSpacing(.custom(0))
 
             if let event = today.first {
                 Section {
@@ -80,10 +81,10 @@ struct ContactDetailView: View {
             if !contact.phones.isEmpty || !contact.emails.isEmpty {
                 Section {
                     ForEach(contact.phones) { p in
-                        LabeledContent(p.label) { copyableValue(p.value, tinted: true) { call(p.value) } }
+                        detailRow(p.value, tinted: true, action: { call(p.value) }) { Text(p.label) }
                     }
                     ForEach(contact.emails) { e in
-                        LabeledContent(e.label) { copyableValue(e.value, tinted: true) { mail(e.value) } }
+                        detailRow(e.value, tinted: true, action: { mail(e.value) }) { Text(e.label) }
                     }
                 }
             }
@@ -109,37 +110,33 @@ struct ContactDetailView: View {
             if !contact.urls.isEmpty {
                 Section("Website") {
                     ForEach(contact.urls) { u in
-                        LabeledContent(u.label) { copyableValue(u.value, tinted: true) { openWebsite(u.value) } }
+                        detailRow(u.value, tinted: true, action: { openWebsite(u.value) }) { Text(u.label) }
                     }
                 }
             }
 
             if !contact.relations.isEmpty {
                 Section("Related people") {
-                    ForEach(contact.relations) { r in LabeledContent(r.label) { copyableValue(r.value) } }
+                    ForEach(contact.relations) { r in detailRow(r.value) { Text(r.label) } }
                 }
             }
 
             if !contact.ims.isEmpty {
                 Section("Messaging and social") {
-                    ForEach(contact.ims) { i in LabeledContent(i.label.displayLabel) { copyableValue(i.value) } }
+                    ForEach(contact.ims) { i in detailRow(i.value) { Text(i.label.displayLabel) } }
                 }
             }
 
             if !contact.customFields.isEmpty {
                 Section("Custom fields") {
-                    ForEach(contact.customFields) { f in LabeledContent(f.label) { copyableValue(f.value) } }
+                    ForEach(contact.customFields) { f in detailRow(f.value) { Text(f.label) } }
                 }
             }
 
             if !contact.events.isEmpty {
                 Section("Dates") {
                     ForEach(contact.events) { e in
-                        LabeledContent {
-                            copyableValue(e.date.formatted())
-                        } label: {
-                            Label { Text(e.displayTitle) } icon: { Image(systemName: e.kind.symbol).foregroundStyle(e.kind.tint) }
-                        }
+                        detailRow(e.date.formatted()) { Text(e.displayTitle) }
                     }
                 }
             }
@@ -246,7 +243,7 @@ struct ContactDetailView: View {
         .frame(maxWidth: 420)
         // The glass buttons cast a soft shadow, and a list row clips anything outside its bounds. Without room
         // around them the shadow is cut off in a hard-edged slab, so pad the buttons inside the row instead.
-        .padding(.horizontal, 12).padding(.top, 20).padding(.bottom, 34)
+        .padding(.horizontal, 12).padding(.top, 20).padding(.bottom, 24)
     }
 
     private func actionButton(_ title: String, _ symbol: String, enabled: Bool, action: @escaping () -> Void) -> some View {
@@ -281,17 +278,24 @@ struct ContactDetailView: View {
     /// A value with a copy button beside it. Long-pressing the text shows the system Copy popover.
     /// With an `action` the text is tappable (call, mail, open), like a link.
     @ViewBuilder
-    private func copyableValue(_ value: String, tinted: Bool = false, action: (() -> Void)? = nil) -> some View {
-        HStack(spacing: 6) {
-            if let action {
-                Text(value).foregroundStyle(tinted ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
-                    .multilineTextAlignment(.trailing)
-                    .textSelection(.enabled)
-                    .onTapGesture(perform: action)
-                    .accessibilityAddTraits(.isButton)
-            } else {
-                Text(value).multilineTextAlignment(.trailing).textSelection(.enabled)
+    /// One detail: the label above, the value below it on the left, and the copy button on the right,
+    /// so long values wrap without throwing the rows out of line.
+    private func detailRow<L: View>(_ value: String, tinted: Bool = false, action: (() -> Void)? = nil,
+                                    @ViewBuilder label: () -> L) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                label().font(.footnote).foregroundStyle(.secondary)
+                if let action {
+                    Text(value).foregroundStyle(tinted ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
+                        .multilineTextAlignment(.leading)
+                        .textSelection(.enabled)
+                        .onTapGesture(perform: action)
+                        .accessibilityAddTraits(.isButton)
+                } else {
+                    Text(value).multilineTextAlignment(.leading).textSelection(.enabled)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             CopyButton(text: value)
         }
     }

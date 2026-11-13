@@ -125,14 +125,17 @@ struct ShareContactView: View {
     }
 
     private func send(_ fields: Set<ShareField>, saveAs card: ContactCard?) {
-        guard let url = try? contact.keeping(fields).writeVCardFile() else { return }
         if var card {
             card.fields = contact.shareKeys(for: fields)
             model.cards.save(card)
             model.cards.lastUsedID = card.id
         }
-        onShare(url)
-        dismiss()
+        // Loading the photo can take a moment, so the card is built off the tap.
+        Task {
+            guard let url = try? await contact.keeping(fields).writeVCardFile() else { return }
+            onShare(url)
+            dismiss()
+        }
     }
 }
 
@@ -162,6 +165,7 @@ private struct CustomShareView: View {
         // Like iOS: name, phones and emails start selected; the rest is opt-in.
         var start: Set<ShareField> = []
         if !contact.displayName.isEmpty { start.insert(.name) }
+        if contact.photoURL != nil { start.insert(.photo) }
         contact.phones.forEach { start.insert(.phone($0.id)) }
         contact.emails.forEach { start.insert(.email($0.id)) }
         _chosen = State(initialValue: start)
@@ -320,7 +324,11 @@ struct ShareFieldList: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            ForEach(Array(contact.shareGroups.enumerated()), id: \.offset) { _, rows in
+            ForEach(Array(contact.shareGroups.enumerated()), id: \.offset) { _, allRows in
+                // The photo isn't a line of text: it sits above the cards, centred, like the contact screen.
+                let rows = allRows.filter { $0.field != .photo }
+                if allRows.contains(where: { $0.field == .photo }) { photoPicker }
+                if !rows.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                         if index > 0 { Divider().padding(.leading, 56) }
@@ -328,6 +336,7 @@ struct ShareFieldList: View {
                     }
                 }
                 .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 24))
+                }
             }
         }
     }
@@ -351,6 +360,30 @@ struct ShareFieldList: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    /// The photo itself, big and centred, with the tick on it.
+    private var photoPicker: some View {
+        let on = chosen.contains(.photo)
+        return Button {
+            if on { chosen.remove(.photo) } else { chosen.insert(.photo) }
+        } label: {
+            AvatarView(contact: contact, size: 120)
+                .opacity(on ? 1 : 0.4)
+                .overlay(alignment: .bottomTrailing) {
+                    Image(systemName: on ? "checkmark.circle.fill" : "circle")
+                        .font(.title)
+                        .foregroundStyle(on ? Color.white : Color.accentColor.opacity(0.7), on ? Color.accentColor : Color.clear)
+                        .background(Circle().fill(Color(.systemGroupedBackground)).padding(2))
+                        .offset(x: 2, y: 2)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Photo")
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 }

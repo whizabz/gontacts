@@ -87,12 +87,12 @@ struct CopyButton: View {
         } label: {
             Image(systemName: copied ? "checkmark" : "doc.on.doc")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(copied ? Color.green : Color.accentColor)
-                .frame(width: 18, height: 18)
+                .foregroundStyle(copied ? Color.green : Color.secondary)
+                .frame(width: 32, height: 32)
+                .contentShape(.rect)
         }
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
-        .controlSize(.small)
+        // Just a grey icon, no button background, so a column of them stays quiet.
+        .buttonStyle(.borderless)
         .sensoryFeedback(.success, trigger: copied) { _, new in new }
         .accessibilityLabel(copied ? "Copied" : "Copy")
     }

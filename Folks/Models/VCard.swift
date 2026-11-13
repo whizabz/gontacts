@@ -5,7 +5,11 @@ extension Contact {
     ///
     /// Dates without a year use Apple's convention (year 1604 plus `X-APPLE-OMIT-YEAR`) so iOS shows
     /// "13 December" rather than a made-up year.
-    var vCard: String {
+    var vCard: String { vCard(withPhoto: nil) }
+
+    /// The vCard, with a JPEG profile photo embedded when given. Left out of `vCard` itself so QR codes and
+    /// widgets stay small.
+    func vCard(withPhoto photo: Data?) -> String {
         var lines = ["BEGIN:VCARD", "VERSION:3.0"]
         func add(_ line: String) { lines.append(line) }
         func esc(_ s: String) -> String {
@@ -23,6 +27,13 @@ extension Contact {
 
         add("N:\(esc(familyName));\(esc(givenName));\(esc(middleName));\(esc(namePrefix));\(esc(nameSuffix))")
         add("FN:\(esc(displayName))")
+        if let photo {
+            // Base64 lines are folded at 75 characters; continuation lines start with a space.
+            let encoded = "PHOTO;ENCODING=b;TYPE=JPEG:" + photo.base64EncodedString()
+            var rest = Substring(encoded)
+            add(String(rest.prefix(75))); rest = rest.dropFirst(75)
+            while !rest.isEmpty { add(" " + rest.prefix(74)); rest = rest.dropFirst(74) }
+        }
         if !nickname.isEmpty { add("NICKNAME:\(esc(nickname))") }
         if !organization.isEmpty || !department.isEmpty { add("ORG:\(esc(organization));\(esc(department))") }
         if !jobTitle.isEmpty { add("TITLE:\(esc(jobTitle))") }
@@ -54,7 +65,7 @@ extension Contact {
 
 /// One thing that can be ticked on the "Share Contact" screen.
 enum ShareField: Hashable {
-    case name, nickname, company, jobTitle, notes
+    case name, photo, nickname, company, jobTitle, notes
     case phone(UUID), email(UUID), url(UUID), address(UUID), event(UUID)
 }
 
@@ -66,6 +77,7 @@ extension Contact {
             c.namePrefix = namePrefix; c.givenName = givenName; c.middleName = middleName
             c.familyName = familyName; c.nameSuffix = nameSuffix
         }
+        if chosen.contains(.photo) { c.photoURL = photoURL }
         if chosen.contains(.nickname) { c.nickname = nickname }
         if chosen.contains(.company) { c.organization = organization; c.department = department }
         if chosen.contains(.jobTitle) { c.jobTitle = jobTitle }
@@ -76,13 +88,5 @@ extension Contact {
         c.addresses = addresses.filter { chosen.contains(.address($0.id)) }
         c.events = events.filter { chosen.contains(.event($0.id)) }
         return c
-    }
-
-    /// Writes `vCard` to a temporary `.vcf` named after the contact and returns its URL.
-    func writeVCardFile() throws -> URL {
-        let name = displayName.replacingOccurrences(of: "/", with: "-")
-        let url = FileManager.default.temporaryDirectory.appending(path: "\(name).vcf")
-        try vCard.write(to: url, atomically: true, encoding: .utf8)
-        return url
     }
 }

@@ -400,8 +400,10 @@ struct ContactCardDetailView: View {
     }
 
     private func share(_ contact: Contact, _ fields: Set<ShareField>) {
-        guard let url = try? contact.keeping(fields).writeVCardFile() else { return }
         model.cards.lastUsedID = cardID
-        ShareSheet.present(url)
+        Task {
+            guard let url = try? await contact.keeping(fields).writeVCardFile() else { return }
+            ShareSheet.present(url)
+        }
     }
 }
