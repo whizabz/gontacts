@@ -6,6 +6,24 @@ enum ContactSort: String, CaseIterable, Identifiable {
     var title: String { self == .name ? "Name" : "Recently Modified" }
 }
 
+/// The options inside the Sort menu. On the Mac a Picker nests under a "Sort By" submenu, so there they are checkable
+/// items and the menu opens straight onto the choices.
+struct SortOptions: View {
+    @Binding var sort: ContactSort
+
+    var body: some View {
+        if Platform.isMac {
+            ForEach(ContactSort.allCases) { option in
+                Toggle(option.title, isOn: Binding(get: { sort == option }, set: { _ in sort = option }))
+            }
+        } else {
+            Picker("Sort By", selection: $sort) {
+                ForEach(ContactSort.allCases) { Text($0.title).tag($0) }
+            }
+        }
+    }
+}
+
 struct ContactRow: View {
     @Environment(AppModel.self) private var model
     let contact: Contact
@@ -103,9 +121,7 @@ struct ContactsList: View {
             if showsSortInToolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Picker("Sort By", selection: $sort) {
-                            ForEach(ContactSort.allCases) { Text($0.title).tag($0) }
-                        }
+                        SortOptions(sort: $sort)
                     } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
                 }
             }

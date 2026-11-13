@@ -180,9 +180,7 @@ private struct ContactsListHeader: View {
             Text("\(model.store.contacts.count) Contacts").font(.footnote).foregroundStyle(.secondary)
             Spacer()
             Menu {
-                Picker("Sort By", selection: $sort) {
-                    ForEach(ContactSort.allCases) { Text($0.title).tag($0) }
-                }
+                SortOptions(sort: $sort)
             } label: {
                 Label(sort.title, systemImage: "arrow.up.arrow.down").font(.footnote.weight(.semibold))
             }
