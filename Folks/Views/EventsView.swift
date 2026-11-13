@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct EventsList: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(AppModel.self) private var model
     /// Search text from the home screen: only events for contacts matching it are shown.
     var query = ""
@@ -47,19 +48,21 @@ struct EventsList: View {
         @Bindable var model = model
         let anchor = EventTimeline.anchorID(in: sections)
 
+        // iPhone (compact): the system list selection drives navigation, as before. Regular width (iPad): no system
+        // selection, because on a real iPad it draws a square accent ring and fill; rows draw their own instead.
+        let custom = sizeClass == .regular
+
         ScrollViewReader { proxy in
-            List {
+            List(selection: custom ? .constant(nil) : $model.eventsSelection) {
                 ForEach(sections) { section in
                     Section {
                         ForEach(section.occurrences) { o in
                             let selected = model.eventsSelection == o.id
                             EventRow(occurrence: o, isToday: section.role == .today)
-                                .contentShape(.rect)
-                                .onTapGesture { model.eventsSelection = o.id }
-                                .accessibilityAddTraits(selected ? .isSelected : [])
-                                // Drawn by us, not the system: on a real iPad the system fills the selection with
-                                // the accent colour (grey in the simulator), which clashes with the row's text.
-                                .listRowBackground(EventRowBackground(isToday: section.role == .today, isSelected: selected))
+                                .tag(o.id)
+                                .modifier(CustomSelection(enabled: custom, isToday: section.role == .today, isSelected: selected) {
+                                    model.eventsSelection = o.id
+                                })
                         }
                     } header: {
                         HStack {
@@ -71,7 +74,6 @@ struct EventsList: View {
                     }
                 }
             }
-            // No system selection: on a real iPad it draws a square accent ring and fill. Rows draw their own and handle taps.
             .background(ScrollViewHandle(box: scrollHandle))
             .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollTracker.offsetY = y }
             .onScrollGeometryChange(for: ScrollRelation.self) { geo in
@@ -172,5 +174,25 @@ private struct EventRowBackground: View {
             }
         }
         .padding(.horizontal, -5.5)
+    }
+}
+
+/// iPad: our own rounded selection background and tap handling (see `EventsList.body`). A no-op on iPhone.
+private struct CustomSelection: ViewModifier {
+    let enabled: Bool
+    let isToday: Bool
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .contentShape(.rect)
+                .onTapGesture(perform: onTap)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+                .listRowBackground(EventRowBackground(isToday: isToday, isSelected: isSelected))
+        } else {
+            content
+        }
     }
 }
