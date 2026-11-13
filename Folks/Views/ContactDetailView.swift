@@ -187,7 +187,7 @@ struct ContactDetailView: View {
         .sheet(isPresented: $sharing, onDismiss: {
             if let url = pendingShare { pendingShare = nil; ShareSheet.present(url, from: shareAnchor) }
         }) {
-            ShareContactView(contact: contact) { pendingShare = $0 }.iPadSheetStaysOpen()
+            ShareContactView(contact: contact) { ShareSheet.deliver($0, pending: &pendingShare) }.iPadSheetStaysOpen()
         }
         .sheet(isPresented: $editing) { EditContactView(contact: contact).iPadSheetStaysOpen() }
         .sheet(isPresented: $wishing) { WishView(contact: contact, occurrence: today.first).iPadSheetStaysOpen() }

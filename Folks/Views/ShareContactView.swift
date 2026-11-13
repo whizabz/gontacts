@@ -134,7 +134,8 @@ struct ShareContactView: View {
         Task {
             guard let url = try? await contact.keeping(fields).writeVCardFile() else { return }
             onShare(url)
-            dismiss()
+            // Where the share sheet is a popover (iPad, Mac) the screen stays open and the popover points at its button.
+            if !ShareSheet.staysOpen { dismiss() }
         }
     }
 }
@@ -293,6 +294,7 @@ private struct ShareActions: View {
             }
             .buttonStyle(.glassProminent).prominentButtonShadow()
             .controlSize(.extraLarge)
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { ShareSheet.modalAnchor = $0 }
 
             HStack(spacing: 12) {
                 Button {
@@ -391,6 +393,16 @@ struct ShareFieldList: View {
 /// Opens the standard iOS share sheet over whatever is on screen.
 @MainActor
 enum ShareSheet {
+    /// True where the share sheet is a popover over the Share Contact screen, which then stays open.
+    static var staysOpen: Bool { UIDevice.current.userInterfaceIdiom == .pad || Platform.isMac }
+    /// The Share button on the Share Contact screen, in window coordinates.
+    static var modalAnchor: CGRect?
+
+    /// Called with the vCard chosen on the Share Contact screen: shows the share sheet over that screen where it stays
+    /// open, otherwise hands the file back to open once the screen has closed.
+    static func deliver(_ url: URL, pending: inout URL?) {
+        if staysOpen { present(url, from: modalAnchor) } else { pending = url }
+    }
     /// `anchor` is the Share button's frame in window coordinates; the popover points at it.
     static func present(_ url: URL, from anchor: CGRect? = nil) {
         guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.activationState == .foregroundActive }),
