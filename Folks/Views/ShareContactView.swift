@@ -396,6 +396,11 @@ enum ShareSheet {
               var top = scene.keyWindow?.rootViewController else { return }
         while let next = top.presentedViewController { top = next }
         let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        // On iPad this is a popover anchored near the top right, not a sheet that a swipe pulls away.
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            sheet.modalPresentationStyle = .popover
+            sheet.popoverPresentationController?.permittedArrowDirections = .up
+        }
         sheet.popoverPresentationController?.sourceView = top.view
         sheet.popoverPresentationController?.sourceRect = CGRect(x: top.view.bounds.maxX - 40, y: 60, width: 1, height: 1)
         top.present(sheet, animated: true)

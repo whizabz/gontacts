@@ -38,6 +38,8 @@ struct ContactRow: View {
 struct ContactsList: View {
     @Environment(AppModel.self) private var model
     @AppStorage("contacts.sort") private var sort = ContactSort.name
+    /// False on iPad, where the sort control sits under the Contacts/Events switcher instead of in the toolbar.
+    var showsSortInToolbar = true
 
     private var sections: [(letter: String, contacts: [Contact])] {
         let cardID = model.store.myCard?.id
@@ -87,12 +89,14 @@ struct ContactsList: View {
         .listSectionIndexVisibility(sort == .name ? .visible : .hidden)
         .refreshable { await model.store.sync() }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Picker("Sort By", selection: $sort) {
-                        ForEach(ContactSort.allCases) { Text($0.title).tag($0) }
-                    }
-                } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
+            if showsSortInToolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Sort By", selection: $sort) {
+                            ForEach(ContactSort.allCases) { Text($0.title).tag($0) }
+                        }
+                    } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
+                }
             }
         }
         .overlay {

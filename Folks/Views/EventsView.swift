@@ -48,12 +48,18 @@ struct EventsList: View {
         let anchor = EventTimeline.anchorID(in: sections)
 
         ScrollViewReader { proxy in
-            List(selection: $model.eventsSelection) {
+            List {
                 ForEach(sections) { section in
                     Section {
                         ForEach(section.occurrences) { o in
-                            EventRow(occurrence: o, isToday: section.role == .today).tag(o.id)
-                                .listRowBackground(section.role == .today ? Color.accentColor.opacity(0.14) : nil)
+                            let selected = model.eventsSelection == o.id
+                            EventRow(occurrence: o, isToday: section.role == .today)
+                                .contentShape(.rect)
+                                .onTapGesture { model.eventsSelection = o.id }
+                                .accessibilityAddTraits(selected ? .isSelected : [])
+                                // Drawn by us, not the system: on a real iPad the system fills the selection with
+                                // the accent colour (grey in the simulator), which clashes with the row's text.
+                                .listRowBackground(EventRowBackground(isToday: section.role == .today, isSelected: selected))
                         }
                     } header: {
                         HStack {
@@ -65,6 +71,7 @@ struct EventsList: View {
                     }
                 }
             }
+            // No system selection: on a real iPad it draws a square accent ring and fill. Rows draw their own and handle taps.
             .background(ScrollViewHandle(box: scrollHandle))
             .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollTracker.offsetY = y }
             .onScrollGeometryChange(for: ScrollRelation.self) { geo in
@@ -129,7 +136,7 @@ struct EventRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(occurrence.contactName)
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(isToday ? Color.accentColor : .primary)
+                    .foregroundStyle(isToday ? Color.accentColor : Color(.label))
                 EventLine(kind: occurrence.event.kind, text: occurrence.detail)
             }
             Spacer(minLength: 8)
@@ -141,9 +148,29 @@ struct EventRow: View {
                     .background(Color.accentColor, in: .capsule)
             } else {
                 Text(occurrence.date.formatted(Self.dayStyle))
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(Color(.secondaryLabel))
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+
+/// Row background for the Events list: a rounded grey selection, and for today's row a purple tint that gains an
+/// outline when selected.
+private struct EventRowBackground: View {
+    let isToday: Bool
+    let isSelected: Bool
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+        ZStack {
+            if isToday { shape.fill(Color.accentColor.opacity(0.14)) }
+            if isSelected {
+                if isToday { shape.strokeBorder(Color.accentColor, lineWidth: 2) }
+                else { shape.fill(Color(.systemFill)) }
+            }
+        }
+        .padding(.horizontal, -5.5)
     }
 }

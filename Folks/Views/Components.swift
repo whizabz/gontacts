@@ -54,7 +54,9 @@ struct EventLine: View {
             Image(systemName: kind.symbol).foregroundStyle(kind.tint).frame(width: 18)
         }
         .font(.footnote)
-        .foregroundStyle(.secondary)
+        // A fixed colour, not the hierarchical `.secondary`: inside a selected list row the system re-tints
+        // hierarchical styles, which turned this into a washed-out purple.
+        .foregroundStyle(Color(.secondaryLabel))
         .labelStyle(.titleAndIcon)
     }
 }

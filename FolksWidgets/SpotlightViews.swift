@@ -40,9 +40,7 @@ private struct Spotlight: View {
                 Text(hero.long).font(.system(size: 13)).foregroundStyle(Theme.secondary).lineLimit(1).padding(.top, 3)
                 if let following {
                     Rectangle().fill(Theme.line).frame(height: 1).padding(.top, 10).padding(.bottom, 8)
-                    (Text("Next · ").foregroundStyle(Theme.secondary)
-                     + Text(following.name).fontWeight(.semibold)
-                     + Text(", \(following.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))").foregroundStyle(Theme.secondary))
+                    Text("\(Text("Next · ").foregroundStyle(Theme.secondary))\(Text(following.name).fontWeight(.semibold))\(Text(", \(following.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))").foregroundStyle(Theme.secondary))")
                         .font(.system(size: 12)).lineLimit(1)
                 }
             }

@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import WidgetKit
 
 /// A photo when one has been saved for the contact, otherwise tinted initials (as in the app).
 struct AvatarCircle: View {

@@ -3,6 +3,9 @@ import SwiftUI
 
 struct ContactDetailView: View {
     let contactID: String
+    /// On iPad the detail floats in a card; its Share and More buttons are drawn inside the card, in one glass
+    /// capsule like the toolbar's, instead of in the navigation bar (which iPadOS pins to the top of the window).
+    var embedded = false
 
     @Environment(AppModel.self) private var model
     @Environment(\.openURL) private var openURL
@@ -159,31 +162,33 @@ struct ContactDetailView: View {
             }
         }
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                // Share is the main action (as a vCard, like iOS Contacts); Edit lives in the overflow menu.
-                Button { sharing = true } label: { Label("Share", systemImage: "square.and.arrow.up") }
-                Menu {
-                    Button("Edit", systemImage: "pencil") { editing = true }.disabled(syncing)
-                    Toggle(isOn: Binding(get: { muted }, set: { setMuted($0, contact) })) {
-                        Label("Mute Reminders", systemImage: "bell.slash")
-                    }
-                    if model.store.canSync {
-                        let isMine = model.store.myCard?.id == contact.id
-                        Button(isMine ? "Remove as My Card" : "Set as My Card", systemImage: "person.crop.circle") {
-                            model.store.setMyCard(isMine ? "" : contact.id)
-                        }
-                    }
-                    Button("Delete Contact", systemImage: "trash", role: .destructive) { confirmDelete = true }
-                } label: { Label("More", systemImage: "ellipsis") }
+            if !embedded { ToolbarItemGroup(placement: .topBarTrailing) { actions(contact, muted: muted, syncing: syncing) } }
+        }
+        .toolbarVisibility(embedded ? .hidden : .automatic, for: .navigationBar)
+        .overlay(alignment: .topTrailing) {
+            if embedded {
+                // Same size and shape as the toolbar's pair of buttons: two 44pt targets in one glass capsule.
+                HStack(spacing: 0) {
+                    actions(contact, muted: muted, syncing: syncing)
+                        .frame(width: 48, height: 44)
+                        .contentShape(.rect)
+                }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 18))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 4)
+                    .glassEffect(.regular, in: .capsule)
+                    .padding(16)
             }
         }
         .sheet(isPresented: $sharing, onDismiss: {
             if let url = pendingShare { pendingShare = nil; ShareSheet.present(url) }
         }) {
-            ShareContactView(contact: contact) { pendingShare = $0 }
+            ShareContactView(contact: contact) { pendingShare = $0 }.iPadSheetStaysOpen()
         }
-        .sheet(isPresented: $editing) { EditContactView(contact: contact) }
-        .sheet(isPresented: $wishing) { WishView(contact: contact, occurrence: today.first) }
+        .sheet(isPresented: $editing) { EditContactView(contact: contact).iPadSheetStaysOpen() }
+        .sheet(isPresented: $wishing) { WishView(contact: contact, occurrence: today.first).iPadSheetStaysOpen() }
         .confirmationDialog("Delete \(contact.displayName)?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete Contact", role: .destructive) {
                 Task {
@@ -202,6 +207,25 @@ struct ContactDetailView: View {
                 wishing = true
             }
         }
+    }
+
+    @ViewBuilder
+    private func actions(_ contact: Contact, muted: Bool, syncing: Bool) -> some View {
+        // Share is the main action (as a vCard, like iOS Contacts); Edit lives in the overflow menu.
+        Button { sharing = true } label: { Label("Share", systemImage: "square.and.arrow.up") }
+        Menu {
+            Button("Edit", systemImage: "pencil") { editing = true }.disabled(syncing)
+            Toggle(isOn: Binding(get: { muted }, set: { setMuted($0, contact) })) {
+                Label("Mute Reminders", systemImage: "bell.slash")
+            }
+            if model.store.canSync {
+                let isMine = model.store.myCard?.id == contact.id
+                Button(isMine ? "Remove as My Card" : "Set as My Card", systemImage: "person.crop.circle") {
+                    model.store.setMyCard(isMine ? "" : contact.id)
+                }
+            }
+            Button("Delete Contact", systemImage: "trash", role: .destructive) { confirmDelete = true }
+        } label: { Label("More", systemImage: "ellipsis") }
     }
 
     /// One quiet line under the name: synced, syncing, waiting (offline / interrupted) or needs a retry.
