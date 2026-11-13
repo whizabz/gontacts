@@ -84,6 +84,7 @@ struct SettingsView: View {
                     NavigationLink("Why Folks?") { WhyThisAppExistsView() }
                 }
 
+                if !Platform.isMac {
                 Section {
                     Button {
                         if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
@@ -98,6 +99,7 @@ struct SettingsView: View {
                     .foregroundStyle(.primary)
                 } footer: {
                     Text("Manage notifications, badges, contacts access and language in the iOS Settings app.")
+                }
                 }
             }
             .navigationTitle("Settings")

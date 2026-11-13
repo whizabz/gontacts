@@ -165,7 +165,8 @@ private struct EventRowBackground: View {
     let isSelected: Bool
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+        // iPad: a pill-like 28pt radius to match the system selection. Mac: a plain rounded rectangle.
+        let shape = RoundedRectangle(cornerRadius: Platform.isMac ? 10 : 28, style: .continuous)
         ZStack {
             if isToday { shape.fill(Color.accentColor.opacity(0.14)) }
             if isSelected {
