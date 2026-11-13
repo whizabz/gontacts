@@ -244,7 +244,13 @@ private struct SidebarBottomBar: View {
 /// On the Mac the translucent band under the toolbar grows into a tall blur as the list scrolls; hide the scroll-edge effects there.
 private struct MacScrollEdge: ViewModifier {
     func body(content: Content) -> some View {
-        if Platform.isMac { content.scrollEdgeEffectHidden(true, for: .all) } else { content }
+        if Platform.isMac {
+            // A solid panel behind the Contacts/Events control, so rows scrolling up don't show through it.
+            content
+                .scrollEdgeEffectHidden(true, for: .all)
+                .toolbarBackground(Color(.systemBackground), for: .navigationBar)
+                .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+        } else { content }
     }
 }
 
