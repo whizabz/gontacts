@@ -47,7 +47,8 @@ enum WidgetPublisher {
     }
 
     private static func thumbnail(from url: URL) async -> Data? {
-        guard let (data, _) = try? await URLSession.shared.data(from: url), let image = UIImage(data: data) else { return nil }
+        let downloaded = SampleData.image(for: url) == nil ? try? await URLSession.shared.data(from: url).0 : nil
+        guard let image = SampleData.image(for: url) ?? downloaded.flatMap(UIImage.init(data:)) else { return nil }
         let side: CGFloat = 160
         let scale = max(side / image.size.width, side / image.size.height)
         let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)

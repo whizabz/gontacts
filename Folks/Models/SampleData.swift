@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// Sample contacts whose dates are relative to today, so the demo always has
 /// something happening today (and confetti to show for it).
@@ -38,6 +39,15 @@ enum SampleData {
         me.emails.append(LabeledValue(label: "home", value: "alex.morgan@example.com"))
         me.addresses = [PostalAddress(label: "home", street: "48 Harbour Street", city: "San Francisco", region: "CA", postalCode: "94107", country: "USA")]
         me.urls = [LabeledValue(label: "website", value: "https://alexmorgan.example"), LabeledValue(label: "LinkedIn", value: "https://linkedin.com/in/alexmorgan")]
+
+        // Illustrated stand-ins for profile photos (see the "SamplePhoto-" images). Only some contacts get one,
+        // so the list shows both photos and initials.
+        let photos = ["alex-morgan", "hana-ito", "aanya-kapoor", "ben-okafor", "carla-mendes", "greg-larsen", "ivan-petrov", "elena-rossi"]
+        func withPhoto(_ c: Contact) -> Contact {
+            var c = c
+            if let key = photos.first(where: { c.id == "people/sample-\($0)" }) { c.photoURL = SampleData.photoURL(key) }
+            return c
+        }
 
         return [
             me,
@@ -105,7 +115,16 @@ enum SampleData {
             person("Yusuf", "Demir", phone: "+90 212 555 0159", events: [birthday(day(-20, yearsAgo: 37))]),
             person("Zara", "Quinn", phone: "+1 415 555 0160", email: "zara@example.com"),
             person("Zoe", "Papadakis", phone: "+30 21 5550 0161", events: [anniversary(day(30, yearsAgo: 9))]),
-        ]
+        ].map(withPhoto)
+    }
+
+    /// A `sample://name` address for a bundled demo photo; `AvatarView` and the widgets know how to read it.
+    static func photoURL(_ name: String) -> URL { URL(string: "sample://\(name)")! }
+
+    /// The bundled image behind a `sample://` photo address.
+    static func image(for url: URL) -> UIImage? {
+        guard url.scheme == "sample", let name = url.host else { return nil }
+        return UIImage(named: "SamplePhoto-\(name)")
     }
 
     /// Sample contacts that were saved on an earlier day, with every sample date moved back to "today" terms: Hana
@@ -117,6 +136,7 @@ enum SampleData {
             guard let f = fresh[c.id] else { return c }
             var updated = c
             updated.events = f.events
+            updated.photoURL = f.photoURL
             return updated
         }
         for id in ["people/sample-hana-ito", myCardID] {

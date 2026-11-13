@@ -93,7 +93,7 @@ struct ShareContactView: View {
             ToolbarItem(placement: .cancellationAction) { Button(role: .cancel) { dismiss() } }
         }
         .safeAreaInset(edge: .bottom) {
-            ShareActions(disabled: selectedFields.isEmpty, share: shareSelectedCard) {
+            ShareActions(disabled: selectedFields.isEmpty, share: shareSelectedCard, copyText: { contact.keeping(selectedFields).plainText }) {
                 qrFields = selectedFields; model.cards.lastUsedID = selectedCard; showQR = true
             }
         }
@@ -211,7 +211,7 @@ private struct CustomShareView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            ShareActions(disabled: chosen.isEmpty, share: share) { let card = pendingCard() ?? savedCard; saveCard(); onQR(chosen, card) }
+            ShareActions(disabled: chosen.isEmpty, share: share, copyText: { contact.keeping(chosen).plainText }) { let card = pendingCard() ?? savedCard; saveCard(); onQR(chosen, card) }
         }
     }
 
@@ -271,11 +271,16 @@ private struct CustomShareView: View {
     private func share() { onShare(chosen, pendingCard()) }
 }
 
-/// The two ways to send what's chosen: the iOS share sheet, or a QR code.
+/// How to send what's chosen: the big button opens the iOS share sheet with a contact card;
+/// the smaller ones copy it as text or show a QR code.
 private struct ShareActions: View {
     let disabled: Bool
     let share: () -> Void
+    /// The chosen details as readable text, put on the pasteboard by "Copy as Text".
+    let copyText: () -> String
     let showQR: () -> Void
+
+    @State private var copied = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -283,12 +288,26 @@ private struct ShareActions: View {
                 Label("Share", systemImage: "square.and.arrow.up").font(.headline).frame(maxWidth: .infinity)
             }
             .buttonStyle(.glassProminent).prominentButtonShadow()
-            Button(action: showQR) {
-                Label("Show QR Code", systemImage: "qrcode").font(.headline).frame(maxWidth: .infinity)
+            .controlSize(.extraLarge)
+
+            HStack(spacing: 12) {
+                Button {
+                    UIPasteboard.general.string = copyText()
+                    copied = true
+                    Task { try? await Task.sleep(for: .seconds(1.5)); copied = false }
+                } label: {
+                    Label(copied ? "Copied" : "Copy as Text", systemImage: copied ? "checkmark" : "doc.on.doc")
+                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity)
+                        .contentTransition(.identity)
+                }
+                .sensoryFeedback(.success, trigger: copied) { _, new in new }
+                Button(action: showQR) {
+                    Label("QR Code", systemImage: "qrcode").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity)
+                }
             }
             .buttonStyle(.glass)
+            .controlSize(.large)
         }
-        .controlSize(.extraLarge)
         .disabled(disabled)
         .padding(.horizontal, 20).padding(.bottom, 8)
     }

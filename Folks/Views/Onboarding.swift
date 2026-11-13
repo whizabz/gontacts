@@ -103,6 +103,23 @@ struct WelcomeView: View {
     }
 }
 
+/// Button text that swaps to a spinner and a status line while Google sign-in and the first sync run.
+private struct SignInLabel: View {
+    let title: String
+    let working: Bool
+    let syncing: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if working { ProgressView().tint(.white) }
+            Text(working ? (syncing ? "Syncing your contacts…" : "Connecting…") : title).font(.headline)
+        }
+        .frame(maxWidth: .infinity)
+        .animation(.default, value: working)
+        .animation(.default, value: syncing)
+    }
+}
+
 struct ConnectView: View {
     @Environment(AppModel.self) private var model
     let onConnected: () -> Void
@@ -140,7 +157,7 @@ struct ConnectView: View {
                     else if model.store.contactsAccessMissing { onAccessMissing() }
                 }
             } label: {
-                Text("Continue with Google").font(.headline).frame(maxWidth: .infinity)
+                SignInLabel(title: "Continue with Google", working: working, syncing: model.store.isSyncing)
             }
             .buttonStyle(.glassProminent).prominentButtonShadow().controlSize(.extraLarge)
             .disabled(working)
@@ -152,6 +169,7 @@ struct ConnectView: View {
                 Text("Use Sample Contacts").font(.headline).frame(maxWidth: .infinity)
             }
             .buttonStyle(.glass).controlSize(.extraLarge)
+            .disabled(working)
         }
         .padding(.horizontal, 24).padding(.bottom, 12)
         .frame(maxWidth: 560)
@@ -202,7 +220,7 @@ struct ContactsAccessNeededView: View {
                     if model.store.mode == .google { onConnected() }
                 }
             } label: {
-                Text("Try again").font(.headline).frame(maxWidth: .infinity)
+                SignInLabel(title: "Try again", working: working, syncing: model.store.isSyncing)
             }
             .buttonStyle(.glassProminent).prominentButtonShadow().controlSize(.extraLarge)
             .disabled(working)

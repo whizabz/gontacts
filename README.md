@@ -41,6 +41,10 @@ Without a client ID the app still runs: "Use Sample Contacts" on the connect scr
 - Testing on the iPhone Duo simulator (no Duo runtime installed here); layouts use `NavigationSplitView`/`TabView` so they adapt, but fold-aware tweaks (`ReservedRegion`) are untested
 - Photos are display-only (no upload)
 
+## Credits
+
+The profile photos on the demo (sample) contacts are free stock photos from [Pexels](https://www.pexels.com/license/), in `Folks/Assets.xcassets/SamplePhoto-*`.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var authStatus: UNAuthorizationStatus = .notDetermined
     @State private var confirmSignOut = false
     @State private var testNotificationSent = false
+    @State private var signingIn = false
     @State private var confirmResetShowOff = false
     @AppStorage(NamePreference.enabled) private var preferNicknames = false
     @AppStorage(NamePreference.list) private var nicknameInList = true
@@ -162,12 +163,20 @@ extension SettingsView {
         if model.store.mode == .demo {
             Section {
                 LabeledContent("Contacts", value: "Sample contacts")
-                Button("Sign in with Google") {
+                Button {
+                    signingIn = true
                     Task {
                         await model.store.signInWithGoogle()
+                        signingIn = false
                         if model.store.contactsAccessMissing { model.store.errorMessage = AuthError.contactsAccessMissing.localizedDescription }
                     }
+                } label: {
+                    HStack(spacing: 10) {
+                        Text(signingIn ? (model.store.isSyncing ? "Syncing your contacts…" : "Connecting…") : "Sign in with Google")
+                        if signingIn { ProgressView() }
+                    }
                 }
+                .disabled(signingIn)
             } header: {
                 Text("Account")
             } footer: {

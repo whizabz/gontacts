@@ -23,7 +23,9 @@ struct AvatarView: View {
 
     var body: some View {
         Group {
-            if let url = contact.photoURL {
+            if let url = contact.photoURL, let image = SampleData.image(for: url) {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else if let url = contact.photoURL {
                 AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { initials }
             } else {
                 initials
@@ -67,5 +69,31 @@ extension View {
     /// primary button next to a secondary one looks flat. This gives it the same lift.
     func prominentButtonShadow() -> some View {
         shadow(color: .black.opacity(0.18), radius: 10, y: 5)
+    }
+}
+
+
+/// Copy-to-clipboard button for contact details, in the same glass style as the other buttons;
+/// flips to a checkmark briefly after copying.
+struct CopyButton: View {
+    let text: String
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            UIPasteboard.general.string = text
+            copied = true
+            Task { try? await Task.sleep(for: .seconds(1.2)); copied = false }
+        } label: {
+            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(copied ? Color.green : Color.accentColor)
+                .frame(width: 18, height: 18)
+        }
+        .buttonStyle(.glass)
+        .buttonBorderShape(.circle)
+        .controlSize(.small)
+        .sensoryFeedback(.success, trigger: copied) { _, new in new }
+        .accessibilityLabel(copied ? "Copied" : "Copy")
     }
 }

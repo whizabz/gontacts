@@ -45,10 +45,10 @@ private struct ContactContextMenu: ViewModifier {
         } label: { Label(title, systemImage: symbol) }
     }
 
-    /// Puts the contact on the pasteboard as a vCard, with the same text as a plain-text fallback.
+    /// Puts the contact on the pasteboard as a vCard, with readable text as the plain-text version, so pasting into Messages or Notes gives something legible.
     private func copy() {
         let card = contact.vCard
-        UIPasteboard.general.setItems([[UTType.vCard.identifier: Data(card.utf8), UTType.utf8PlainText.identifier: card]])
+        UIPasteboard.general.setItems([[UTType.vCard.identifier: Data(card.utf8), UTType.utf8PlainText.identifier: contact.plainText]])
     }
 }
 

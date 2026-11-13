@@ -46,7 +46,7 @@ struct ContactDetailView: View {
                     if model.store.canSync {
                         syncStatus(contact)
                     }
-                    actionButtons(contact).padding(.top, 12)
+                    actionButtons(contact).padding(.top, -8).padding(.bottom, -14)
                 }
                 .frame(maxWidth: .infinity)
                 .listRowBackground(Color.clear)
@@ -66,7 +66,13 @@ struct ContactDetailView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.glassProminent).prominentButtonShadow().controlSize(.large)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20).padding(.vertical, 14)
+                    // A flat tinted capsule: Liquid Glass drew a hard-edged shadow slab behind the pill because
+                    // List rows clip to their bounds.
+                    .background(Capsule().fill(Color.accentColor))
+                    .padding(.vertical, 6)
                     .listRowBackground(Color.clear).listRowInsets(.init())
                 }
             }
@@ -74,10 +80,10 @@ struct ContactDetailView: View {
             if !contact.phones.isEmpty || !contact.emails.isEmpty {
                 Section {
                     ForEach(contact.phones) { p in
-                        LabeledContent(p.label) { Button(p.value) { call(p.value) }.buttonStyle(.plain).foregroundStyle(.tint) }
+                        LabeledContent(p.label) { copyableValue(p.value, tinted: true) { call(p.value) } }
                     }
                     ForEach(contact.emails) { e in
-                        LabeledContent(e.label) { Button(e.value) { mail(e.value) }.buttonStyle(.plain).foregroundStyle(.tint) }
+                        LabeledContent(e.label) { copyableValue(e.value, tinted: true) { mail(e.value) } }
                     }
                 }
             }
@@ -85,13 +91,17 @@ struct ContactDetailView: View {
             if !contact.addresses.filter({ !$0.isEmpty }).isEmpty {
                 Section("Address") {
                     ForEach(contact.addresses.filter { !$0.isEmpty }) { a in
-                        Button { openMap(a) } label: {
+                        HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(a.label).font(.footnote).foregroundStyle(.secondary)
                                 Text(a.formatted).foregroundStyle(.tint).multilineTextAlignment(.leading)
+                                    .textSelection(.enabled)
+                                    .onTapGesture { openMap(a) }
+                                    .accessibilityAddTraits(.isButton)
                             }
+                            Spacer(minLength: 8)
+                            CopyButton(text: a.formatted)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -99,26 +109,26 @@ struct ContactDetailView: View {
             if !contact.urls.isEmpty {
                 Section("Website") {
                     ForEach(contact.urls) { u in
-                        LabeledContent(u.label) { Button(u.value) { openWebsite(u.value) }.buttonStyle(.plain).foregroundStyle(.tint) }
+                        LabeledContent(u.label) { copyableValue(u.value, tinted: true) { openWebsite(u.value) } }
                     }
                 }
             }
 
             if !contact.relations.isEmpty {
                 Section("Related people") {
-                    ForEach(contact.relations) { r in LabeledContent(r.label, value: r.value) }
+                    ForEach(contact.relations) { r in LabeledContent(r.label) { copyableValue(r.value) } }
                 }
             }
 
             if !contact.ims.isEmpty {
                 Section("Messaging and social") {
-                    ForEach(contact.ims) { i in LabeledContent(i.label.displayLabel, value: i.value) }
+                    ForEach(contact.ims) { i in LabeledContent(i.label.displayLabel) { copyableValue(i.value) } }
                 }
             }
 
             if !contact.customFields.isEmpty {
                 Section("Custom fields") {
-                    ForEach(contact.customFields) { f in LabeledContent(f.label, value: f.value) }
+                    ForEach(contact.customFields) { f in LabeledContent(f.label) { copyableValue(f.value) } }
                 }
             }
 
@@ -126,7 +136,7 @@ struct ContactDetailView: View {
                 Section("Dates") {
                     ForEach(contact.events) { e in
                         LabeledContent {
-                            Text(e.date.formatted())
+                            copyableValue(e.date.formatted())
                         } label: {
                             Label { Text(e.displayTitle) } icon: { Image(systemName: e.kind.symbol).foregroundStyle(e.kind.tint) }
                         }
@@ -135,7 +145,13 @@ struct ContactDetailView: View {
             }
 
             if !contact.notes.isEmpty {
-                Section("Notes") { Text(contact.notes) }
+                Section("Notes") {
+                    HStack(alignment: .top) {
+                        Text(contact.notes).textSelection(.enabled)
+                        Spacer(minLength: 8)
+                        CopyButton(text: contact.notes)
+                    }
+                }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -228,6 +244,9 @@ struct ContactDetailView: View {
             }
         }
         .frame(maxWidth: 420)
+        // The glass buttons cast a soft shadow, and a list row clips anything outside its bounds. Without room
+        // around them the shadow is cut off in a hard-edged slab, so pad the buttons inside the row instead.
+        .padding(.horizontal, 12).padding(.top, 20).padding(.bottom, 34)
     }
 
     private func actionButton(_ title: String, _ symbol: String, enabled: Bool, action: @escaping () -> Void) -> some View {
@@ -256,6 +275,24 @@ struct ContactDetailView: View {
         case (.birthday, let y?): "Turns \(y) today"
         case (_, let y?): "\(y) \(y == 1 ? "year" : "years") today"
         default: "Today"
+        }
+    }
+
+    /// A value with a copy button beside it. Long-pressing the text shows the system Copy popover.
+    /// With an `action` the text is tappable (call, mail, open), like a link.
+    @ViewBuilder
+    private func copyableValue(_ value: String, tinted: Bool = false, action: (() -> Void)? = nil) -> some View {
+        HStack(spacing: 6) {
+            if let action {
+                Text(value).foregroundStyle(tinted ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
+                    .multilineTextAlignment(.trailing)
+                    .textSelection(.enabled)
+                    .onTapGesture(perform: action)
+                    .accessibilityAddTraits(.isButton)
+            } else {
+                Text(value).multilineTextAlignment(.trailing).textSelection(.enabled)
+            }
+            CopyButton(text: value)
         }
     }
 
