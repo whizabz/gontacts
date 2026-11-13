@@ -21,3 +21,9 @@ enum Platform {
         #endif
     }
 }
+
+extension Color {
+    /// Mac window: the sidebar sits a shade lighter than the main pane so the two read as separate panels.
+    static let macSidebar = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0.17, alpha: 1) : UIColor(white: 0.93, alpha: 1) })
+    static let macDetail = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0.12, alpha: 1) : UIColor(white: 1, alpha: 1) })
+}

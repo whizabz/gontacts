@@ -45,6 +45,7 @@ struct HomeView: View {
             .iPadSheetStaysOpen()
         }
         .onReceive(NotificationCenter.default.publisher(for: .folksNewContact)) { _ in showNew = true }
+        .onReceive(NotificationCenter.default.publisher(for: .folksSettings)) { _ in showSettings = true }
     }
 
     // MARK: Layouts
@@ -85,7 +86,7 @@ struct HomeView: View {
                 .background {
                     // Where the sidebar sits tells us if iPadOS floats it as a panel or runs it edge to edge.
                     GeometryReader { proxy in
-                        Color.clear.onChange(of: proxy.frame(in: .global).minX, initial: true) { _, x in sidebarFloats = x > 4 }
+                        Color.clear.onChange(of: proxy.frame(in: .global).minX, initial: true) { _, x in sidebarFloats = !Platform.isMac && x > 4 }
                     }
                     .ignoresSafeArea()
                 }
@@ -139,6 +140,7 @@ struct HomeView: View {
 
     private func detail(for mode: HomeMode, embedded: Bool = false) -> some View {
         NavigationStack {
+          Group {
             switch mode {
             case .contacts:
                 if let id = model.contactsSelection {
@@ -154,6 +156,8 @@ struct HomeView: View {
                     ContentUnavailableView("Select an Event", systemImage: "calendar")
                 }
             }
+          }
+          .modifier(MacDetailBackground())
         }
     }
 
@@ -209,12 +213,15 @@ private struct SidebarBottomBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Button(action: onSettings) {
-                Image(systemName: "gearshape").font(.title3).frame(width: 52, height: 52)
+            // On the Mac, Settings lives in the app menu (Cmd+,) as in any Mac app.
+            if !Platform.isMac {
+                Button(action: onSettings) {
+                    Image(systemName: "gearshape").font(.title3).frame(width: 52, height: 52)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .accessibilityLabel("Settings")
             }
-            .buttonStyle(.plain)
-            .glassEffect(.regular.interactive(), in: .circle)
-            .accessibilityLabel("Settings")
 
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
@@ -239,7 +246,8 @@ private struct SidebarBottomBar: View {
             .accessibilityLabel("New Contact")
         }
         .padding(.horizontal, 12)
-        .padding(.bottom, 8)
+        .padding(.top, Platform.isMac ? 12 : 0)
+        .padding(.bottom, Platform.isMac ? 16 : 8)
         .onReceive(NotificationCenter.default.publisher(for: .folksFind)) { _ in searchFocused = true }
     }
 }
@@ -253,6 +261,8 @@ private struct MacScrollEdge: ViewModifier {
             content
                 .scrollEdgeEffectHidden(true, for: .all)
                 .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+                .scrollContentBackground(.hidden)
+                .background(Color.macSidebar)
         } else { content }
     }
 }
@@ -278,13 +288,25 @@ private struct SidebarBars: ViewModifier {
             content
                 .safeAreaInset(edge: .top, spacing: 0) {
                     // The fill runs up behind the toolbar, so the Contacts/Events control sits on the list's own colour.
-                    header.background(Color(.systemBackground).ignoresSafeArea(edges: .top))
+                    header.background(Color.macSidebar.ignoresSafeArea(edges: .top))
                 }
-                .safeAreaInset(edge: .bottom, spacing: 0) { bottom.background(Color(.systemBackground)) }
+                .safeAreaInset(edge: .bottom, spacing: 0) { bottom.background(Color.macSidebar) }
         } else {
             content
                 .safeAreaBar(edge: .top, spacing: 0) { header }
                 .safeAreaBar(edge: .bottom, spacing: 0) { bottom }
         }
+    }
+}
+
+/// The main pane's own colour on the Mac, a shade darker than the sidebar.
+private struct MacDetailBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if Platform.isMac {
+            content
+                .scrollContentBackground(.hidden)
+                .containerBackground(Color.macDetail, for: .navigation)
+                .background(Color.macDetail.ignoresSafeArea())
+        } else { content }
     }
 }

@@ -119,7 +119,7 @@ private struct SectionLetterHeader: View {
         }
         .padding(.top, -6)
         // On the Mac the letter stays pinned at the top while rows scroll under it, so it needs a solid background.
-        .background { if Platform.isMac { Color(.systemBackground).padding(.horizontal, -24).padding(.vertical, -12) } }
+        .background { if Platform.isMac { Color.macSidebar.padding(.horizontal, -24).padding(.vertical, -12) } }
         .accessibilityAddTraits(.isHeader)
     }
 }

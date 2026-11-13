@@ -42,6 +42,11 @@ struct FolksApp: App {
                     .keyboardShortcut("n")
                     .disabled(!model.hasOnboarded)
             }
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") { NotificationCenter.default.post(name: .folksSettings, object: nil) }
+                    .keyboardShortcut(",")
+                    .disabled(!model.hasOnboarded)
+            }
             CommandGroup(after: .textEditing) {
                 Button("Find") { NotificationCenter.default.post(name: .folksFind, object: nil) }
                     .keyboardShortcut("f")
@@ -54,6 +59,7 @@ struct FolksApp: App {
 extension Notification.Name {
     static let folksNewContact = Notification.Name("folks.newContact")
     static let folksFind = Notification.Name("folks.find")
+    static let folksSettings = Notification.Name("folks.settings")
 }
 
 struct RootView: View {
