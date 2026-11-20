@@ -1,10 +1,12 @@
 import SwiftUI
 import UIKit
 
+/// iOS can't list installed apps, so this is a fixed set of messengers that can open a chat from a phone number;
+/// the ones installed are found with canOpenURL (each scheme must be in LSApplicationQueriesSchemes).
 /// Messaging apps that can open a conversation from a phone number.
 /// Nothing is sent from here: the app opens on that contact and you paste and edit the message there.
 enum MessagingApp: String, CaseIterable, Identifiable {
-    case messages, whatsapp, telegram, signal
+    case messages, whatsapp, whatsappBusiness, telegram, signal, viber
 
     var id: String { rawValue }
 
@@ -12,26 +14,30 @@ enum MessagingApp: String, CaseIterable, Identifiable {
         switch self {
         case .messages: "Messages"
         case .whatsapp: "WhatsApp"
+        case .whatsappBusiness: "WhatsApp Business"
         case .telegram: "Telegram"
         case .signal: "Signal"
+        case .viber: "Viber"
         }
     }
 
     var symbol: String {
         switch self {
         case .messages: "message.fill"
-        case .whatsapp: "phone.bubble.fill"
+        case .whatsapp, .whatsappBusiness: "phone.bubble.fill"
         case .telegram: "paperplane.fill"
         case .signal: "bubble.left.and.bubble.right.fill"
+        case .viber: "phone.connection.fill"
         }
     }
 
     var tint: Color {
         switch self {
         case .messages: .green
-        case .whatsapp: .teal
+        case .whatsapp, .whatsappBusiness: .teal
         case .telegram: .blue
         case .signal: .indigo
+        case .viber: .purple
         }
     }
 
@@ -41,8 +47,10 @@ enum MessagingApp: String, CaseIterable, Identifiable {
         switch self {
         case .messages: return true
         case .whatsapp: probe = "whatsapp://"
+        case .whatsappBusiness: probe = "whatsapp-business://"
         case .telegram: probe = "tg://"
         case .signal: probe = "sgnl://"
+        case .viber: probe = "viber://"
         }
         return URL(string: probe).map { UIApplication.shared.canOpenURL($0) } ?? false
     }
@@ -54,7 +62,9 @@ enum MessagingApp: String, CaseIterable, Identifiable {
         switch self {
         case .messages: return URL(string: "sms:\(phone)")
         case .whatsapp: return URL(string: "whatsapp://send?phone=\(digits)")
+        case .whatsappBusiness: return URL(string: "whatsapp-business://send?phone=\(digits)")
         case .telegram: return URL(string: "tg://resolve?phone=\(digits)")
+        case .viber: return URL(string: "viber://chat?number=%2B\(digits)")
         case .signal: return URL(string: "https://signal.me/#p/+\(digits)")
         }
     }

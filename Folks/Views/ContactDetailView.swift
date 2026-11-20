@@ -262,7 +262,7 @@ struct ContactDetailView: View {
     private func actionButtons(_ contact: Contact) -> some View {
         GlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
-                actionButton("Message", "message.fill", enabled: contact.phones.first != nil) { text(contact.phones.first?.value ?? "") }
+                messageButton(contact)
                 actionButton("Call", "phone.fill", enabled: contact.phones.first != nil) { call(contact.phones.first?.value ?? "") }
                 actionButton("Email", "envelope.fill", enabled: contact.emails.first != nil) { mail(contact.emails.first?.value ?? "") }
             }
@@ -271,6 +271,51 @@ struct ContactDetailView: View {
         // The glass buttons cast a soft shadow, and a list row clips anything outside its bounds. Without room
         // around them the shadow is cut off in a hard-edged slab, so pad the buttons inside the row instead.
         .padding(.horizontal, 12).padding(.top, 20).padding(.bottom, 24)
+    }
+
+    /// Message goes straight to Messages when it's the only option. With other messengers installed it offers a menu,
+    /// and with more than one number each messenger opens a second list to pick the number.
+    @ViewBuilder
+    private func messageButton(_ contact: Contact) -> some View {
+        let phones = contact.phones.filter { !$0.value.isEmpty }
+        let apps = MessagingApp.allCases.filter(\.isInstalled)
+        if apps.count > 1, !phones.isEmpty {
+            Menu {
+                ForEach(apps) { app in
+                    if phones.count > 1 {
+                        Menu {
+                            ForEach(phones) { p in
+                                Button("\(p.label.displayLabel)  \(p.value)") { open(app, p.value) }
+                            }
+                        } label: { Label(app.name, systemImage: app.symbol) }
+                    } else {
+                        Button(app.name, systemImage: app.symbol) { open(app, phones[0].value) }
+                    }
+                }
+            } label: { actionLabel("Message", "message.fill") }
+            .buttonStyle(.glass)
+        } else if phones.count > 1 {
+            Menu {
+                ForEach(phones) { p in
+                    Button("\(p.label.displayLabel)  \(p.value)") { text(p.value) }
+                }
+            } label: { actionLabel("Message", "message.fill") }
+            .buttonStyle(.glass)
+        } else {
+            actionButton("Message", "message.fill", enabled: !phones.isEmpty) { text(phones.first?.value ?? "") }
+        }
+    }
+
+    private func open(_ app: MessagingApp, _ number: String) {
+        if let url = app.url(forPhone: number) { openURL(url) }
+    }
+
+    private func actionLabel(_ title: String, _ symbol: String) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: symbol).font(.title3)
+            Text(title).font(.caption.weight(.semibold))
+        }
+        .frame(maxWidth: .infinity, minHeight: 56)
     }
 
     private func actionButton(_ title: String, _ symbol: String, enabled: Bool, action: @escaping () -> Void) -> some View {
