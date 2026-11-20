@@ -69,11 +69,16 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Confetti", isOn: $settings.confetti)
+                    Toggle("Celebration animation", isOn: $settings.confetti.animation())
+                    if settings.confetti {
+                        Picker("Style", selection: $settings.celebrationStyle) {
+                            ForEach(CelebrationStyle.allCases) { Text($0.title).tag($0) }
+                        }
+                    }
                 } header: {
                     Text("Celebrations")
                 } footer: {
-                    Text("Shows confetti when you open a contact whose birthday or anniversary is today. This follows your Reduce Motion accessibility setting.")
+                    Text("Plays confetti or balloons when you open a contact whose birthday or anniversary is today. This follows your Reduce Motion accessibility setting.")
                 }
 
                 accountSection

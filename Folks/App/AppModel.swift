@@ -14,6 +14,12 @@ final class AppModel {
     let settings = ReminderSettings()
     let cards: ContactCardStore
 
+    /// Gets the photos of people with an event today ready ahead of time (see `PhotoCache`).
+    func prefetchTodayPhotos() async {
+        let urls = Set(store.contacts.filter { store.todayIDs.contains($0.id) }.compactMap(\.photoURL))
+        await PhotoCache.shared.prefetch(urls)
+    }
+
     /// Which list the segmented control at the top is showing.
     var homeMode: HomeMode = .contacts
     var contactsSelection: String?

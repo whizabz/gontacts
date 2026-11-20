@@ -21,6 +21,8 @@ struct ContactDetailView: View {
     @State private var confirmDelete = false
     /// Bumped on every appearance so the confetti replays each time the contact is opened.
     @State private var confettiRun = 0
+    /// This run of the celebration, made when the contact opens.
+    @State private var scene: CelebrationScene?
     @AppStorage(NamePreference.enabled) private var nicknamesOn = false
     @AppStorage(NamePreference.detail) private var nicknameInDetail = true
     private var preferNickname: Bool { nicknamesOn && nicknameInDetail }
@@ -158,9 +160,22 @@ struct ContactDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .appEntityIdentifier(EntityIdentifier(for: ContactEntity.self, identifier: contact.id))
+        // The celebration is drawn in two halves: the far pieces behind the content, the near ones in front of it.
+        // For the back half to show, the list lets the page color through and we draw that color ourselves.
+        .scrollContentBackground(.hidden)
+        .background {
+            ZStack {
+                Color(.systemGroupedBackground)
+                if celebrating(today), let scene {
+                    CelebrationView(style: model.settings.celebrationStyle, scene: scene, part: .back).id(confettiRun)
+                }
+            }
+            .ignoresSafeArea()
+        }
         .overlay(alignment: .top) {
-            if !today.isEmpty && !reduceMotion && model.settings.confetti {
-                ConfettiView().id(confettiRun).frame(maxHeight: .infinity).ignoresSafeArea()
+            if celebrating(today), let scene {
+                CelebrationView(style: model.settings.celebrationStyle, scene: scene, part: .front).id(confettiRun)
+                    .frame(maxHeight: .infinity).ignoresSafeArea()
             }
         }
         .toolbar {
@@ -203,7 +218,9 @@ struct ContactDetailView: View {
             }
         } message: { Text("This also deletes it from Google Contacts.") }
         .onAppear {
+            // A fresh run every time the contact opens, starting at once.
             confettiRun += 1
+            scene = celebrating(today) ? CelebrationScene() : nil
             if model.wishRequestID == contact.id, !today.isEmpty {
                 model.wishRequestID = nil
                 wishing = true
@@ -257,6 +274,10 @@ struct ContactDetailView: View {
         .multilineTextAlignment(.center)
         .padding(.top, 2)
         .animation(.smooth, value: state)
+    }
+
+    private func celebrating(_ today: [EventOccurrence]) -> Bool {
+        !today.isEmpty && !reduceMotion && model.settings.confetti
     }
 
     private func actionButtons(_ contact: Contact) -> some View {

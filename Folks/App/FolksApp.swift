@@ -19,8 +19,10 @@ struct FolksApp: App {
                     guard phase == .active, model.hasOnboarded else { return }
                     model.store.refreshToday()
                     Task {
+                        await model.prefetchTodayPhotos()
                         await model.store.flushPending()
                         await model.store.sync(userInitiated: false)
+                        await model.prefetchTodayPhotos()
                         model.rescheduleReminders()
                     }
                 }
@@ -64,10 +66,22 @@ extension Notification.Name {
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var warmedUp = false
 
     var body: some View {
         if model.hasOnboarded {
             HomeView()
+                .overlay(alignment: .topLeading) {
+                    // Once per launch, and only when someone has an event today and the effect is on.
+                    if !model.store.todayIDs.isEmpty && model.settings.confetti && !reduceMotion && !warmedUp {
+                        CelebrationWarmup(style: model.settings.celebrationStyle)
+                            .task {
+                                try? await Task.sleep(for: .seconds(1))
+                                warmedUp = true
+                            }
+                    }
+                }
         } else {
             OnboardingFlow()
         }

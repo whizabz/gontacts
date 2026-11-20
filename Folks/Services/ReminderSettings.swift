@@ -11,8 +11,10 @@ final class ReminderSettings {
     var otherDates: Bool { didSet { defaults.set(otherDates, forKey: "rs.other") } }
     var dayBefore: Bool { didSet { defaults.set(dayBefore, forKey: "rs.dayBefore") } }
     var weekBefore: Bool { didSet { defaults.set(weekBefore, forKey: "rs.weekBefore") } }
-    /// Confetti when opening a contact with an event today. Also skipped when iOS Reduce Motion is on.
+    /// A celebration animation when opening a contact with an event today. Also skipped when iOS Reduce Motion is on.
     var confetti: Bool { didSet { defaults.set(confetti, forKey: "rs.confetti") } }
+    /// Which animation plays for it.
+    var celebrationStyle: CelebrationStyle { didSet { defaults.set(celebrationStyle.rawValue, forKey: "rs.celebrationStyle") } }
     /// Minutes after midnight.
     var timeOfDay: Int { didSet { defaults.set(timeOfDay, forKey: "rs.time") } }
     var mutedIDs: Set<String> { didSet { defaults.set(Array(mutedIDs), forKey: "rs.muted") } }
@@ -36,6 +38,7 @@ final class ReminderSettings {
         dayBefore = bool("rs.dayBefore", false)
         weekBefore = bool("rs.weekBefore", false)
         confetti = bool("rs.confetti", true)
+        celebrationStyle = CelebrationStyle(rawValue: d.string(forKey: "rs.celebrationStyle") ?? "") ?? .confetti
         timeOfDay = d.object(forKey: "rs.time") as? Int ?? 9 * 60
         mutedIDs = Set(d.stringArray(forKey: "rs.muted") ?? [])
         mutedEvents = Set(d.stringArray(forKey: "rs.mutedEvents") ?? [])

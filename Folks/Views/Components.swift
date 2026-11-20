@@ -25,6 +25,8 @@ struct AvatarView: View {
         Group {
             if let url = contact.photoURL, let image = SampleData.image(for: url) {
                 Image(uiImage: image).resizable().scaledToFill()
+            } else if let url = contact.photoURL, let cached = PhotoCache.shared.image(for: url) {
+                Image(uiImage: cached).resizable().scaledToFill()
             } else if let url = contact.photoURL {
                 AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { initials }
             } else {
